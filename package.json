@@ -1,0 +1,39 @@
+{
+  "name": "career-intelligence-platform",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Production-grade AI-powered Career Intelligence Platform",
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=9.0.0"
+  },
+  "scripts": {
+    "dev": "pnpm --filter frontend dev",
+    "build": "pnpm --filter frontend build",
+    "lint": "pnpm --filter '*' lint",
+    "type-check": "pnpm --filter '*' type-check",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "prepare": "husky"
+  },
+  "devDependencies": {
+    "husky": "^9.1.7",
+    "lint-staged": "^15.2.10",
+    "prettier": "^3.3.3",
+    "prettier-plugin-tailwindcss": "^0.6.9",
+    "turbo": "^2.3.3"
+  },
+  "lint-staged": {
+    "*.{ts,tsx,js,jsx}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.{json,md,yaml,yml}": [
+      "prettier --write"
+    ],
+    "*.py": [
+      "ruff check --fix",
+      "ruff format"
+    ]
+  }
+}
