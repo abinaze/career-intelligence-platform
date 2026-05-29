@@ -1,53 +1,49 @@
 # Career Intelligence Platform
 
-> An enterprise-grade, AI-powered career guidance system built entirely on free and open-source technology.
-
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Python](https://img.shields.io/badge/Python-3.12+-blue.svg)](https://www.python.org/)
-[![Next.js](https://img.shields.io/badge/Next.js-15-black.svg)](https://nextjs.org/)
-[![FastAPI](https://img.shields.io/badge/FastAPI-0.115-009688.svg)](https://fastapi.tiangolo.com/)
+An enterprise-grade, AI-powered career guidance system built entirely on free and open-source technology.
 
 ## What This Is
 
 The Career Intelligence Platform is not a recommendation website. It is a full behavioral intelligence and psychometric analysis system that:
 
-- **Deeply profiles** personality, cognition, habits, learning style, and emotional tendencies
-- **Scores behavioral patterns** using multi-factor psychometric engines
-- **Recommends career paths** with explainable confidence scores
-- **Evolves continuously** with each user interaction
-- **Runs entirely free** — no paid APIs, no cloud lock-in
+- Deeply profiles personality, cognition, habits, learning style, and emotional tendencies
+- Scores behavioral patterns using multi-factor psychometric engines
+- Recommends career paths with explainable confidence scores
+- Evolves continuously with each user interaction
+- Runs entirely free with no paid APIs and no cloud lock-in
 
-## Architecture Overview
+## Repository Structure
+
+```text
 career-intelligence-platform/
 ├── apps/
-│   ├── frontend/          # Next.js 15 + TypeScript + TailwindCSS
-│   └── backend/           # FastAPI + Python 3.12 + PostgreSQL
+│   ├── frontend/
+│   └── backend/
 ├── packages/
-│   ├── shared-types/      # Shared TypeScript type contracts
-│   ├── eslint-config/     # Shared ESLint configuration
-│   └── tsconfig/          # Shared TypeScript configuration
+│   ├── shared-types/
+│   ├── eslint-config/
+│   └── tsconfig/
 ├── infrastructure/
-│   ├── docker/            # Docker Compose configurations
-│   ├── nginx/             # Reverse proxy configuration
-│   └── scripts/           # Infrastructure automation
+│   ├── docker/
+│   ├── nginx/
+│   └── scripts/
 ├── docs/
-│   ├── architecture/      # System design documents
-│   ├── api/               # API documentation
-│   └── deployment/        # Deployment guides
+│   ├── architecture/
+│   ├── api/
+│   └── deployment/
 └── .github/
-└── workflows/         # GitHub Actions CI/CD
+    └── workflows/
+```
 
-## Quick Start
-
-### Prerequisites
+## Prerequisites
 
 - Node.js >= 20
 - pnpm >= 9
 - Python >= 3.12
-- [uv](https://docs.astral.sh/uv/)
-- Docker + Docker Compose
+- uv
+- Docker and Docker Compose
 
-### Setup
+## Quick Start
 
 ```bash
 git clone https://github.com/YOUR_USERNAME/career-intelligence-platform.git
@@ -58,41 +54,54 @@ make migrate
 make load-onet
 ```
 
-### Development
+## Running Locally
+
+Start the frontend:
 
 ```bash
-# Terminal 1 — Frontend
-cd apps/frontend && pnpm dev
-
-# Terminal 2 — Backend
-cd apps/backend && uv run uvicorn src.main:app --reload --port 8000
+cd apps/frontend
+pnpm dev
 ```
 
-- Frontend: http://localhost:3000
-- Backend API: http://localhost:8000
-- API Docs: http://localhost:8000/docs
+Start the backend:
+
+```bash
+cd apps/backend
+uv run uvicorn src.main:app --reload --port 8000
+```
+
+Frontend runs at http://localhost:3000
+
+Backend runs at http://localhost:8000
+
+API docs at http://localhost:8000/docs
 
 ## Technology Stack
 
-| Layer | Technology |
-|---|---|
-| Frontend | Next.js 15, TypeScript, TailwindCSS, Shadcn UI, Framer Motion |
-| State | Zustand, TanStack Query |
-| Backend | FastAPI, Python 3.12, Pydantic v2 |
-| Database | PostgreSQL 16, SQLAlchemy 2.0, Alembic |
-| Cache | Redis 7 |
-| AI/ML | sentence-transformers, scikit-learn, FAISS |
-| Auth | JWT (HS256), RBAC |
-| DevOps | Docker, GitHub Actions, uv, pnpm, Turbo |
+Frontend uses Next.js 15, TypeScript, TailwindCSS, Shadcn UI, and Framer Motion.
 
-## AI/ML Architecture
+State management uses Zustand and TanStack Query.
 
-- **Psychometric Engine**: Multi-dimensional personality and cognitive scoring
-- **Behavioral Analysis**: Pattern recognition from user task interactions
-- **Embedding Layer**: `sentence-transformers/all-MiniLM-L6-v2`
-- **Career Compatibility**: Multi-factor weighted ranking with FAISS
-- **Explainability**: Factor decomposition for every recommendation
-- **Career Ontology**: O*NET + ESCO taxonomy integration
+Backend uses FastAPI, Python 3.12, and Pydantic v2.
+
+Database uses PostgreSQL 16, SQLAlchemy 2.0, and Alembic.
+
+Cache uses Redis 7.
+
+AI and ML uses sentence-transformers, scikit-learn, and FAISS.
+
+Auth uses JWT with HS256 and RBAC.
+
+DevOps uses Docker, GitHub Actions, uv, pnpm, and Turbo.
+
+## AI and ML Architecture
+
+- Psychometric Engine for multi-dimensional personality and cognitive scoring
+- Behavioral Analysis for pattern recognition from user task interactions
+- Embedding Layer using sentence-transformers/all-MiniLM-L6-v2
+- Career Compatibility using multi-factor weighted ranking with FAISS
+- Explainability through factor decomposition for every recommendation
+- Career Ontology using O*NET and ESCO taxonomy integration
 
 ## License
 
