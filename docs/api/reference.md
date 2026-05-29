@@ -1,26 +1,24 @@
 # API Reference
 
-Base URL: `http://localhost:8000/api/v1`
+Base URL: http://localhost:8000/api/v1
 
-Interactive docs: `http://localhost:8000/docs`
-
----
+Interactive docs: http://localhost:8000/docs
 
 ## Authentication
 
-All protected endpoints require:
+All protected endpoints require an Authorization header in this format:
 
-Authorization: `Bearer <access_token>`
+```
+Authorization: Bearer your_access_token_here
+```
 
----
+## Auth Endpoints
 
-# Auth Endpoints
-
-## POST /auth/register
+### POST /auth/register
 
 Register a new user account.
 
-### Request
+Request body:
 
 ```json
 {
@@ -28,7 +26,11 @@ Register a new user account.
   "password": "StrongPass123",
   "full_name": "Jane Doe"
 }
-Response — 201 Created
+```
+
+Response 201:
+
+```json
 {
   "user": {
     "id": "uuid",
@@ -44,42 +46,58 @@ Response — 201 Created
     "expires_in": 1800
   }
 }
-POST /auth/token
+```
 
-Login with email and password (OAuth2 form).
+### POST /auth/token
 
-Request — multipart/form-data
-username=user@example.com
-password=StrongPass123
-Response — 200 OK
+Login with email and password using OAuth2 form format.
+
+Request is multipart/form-data with fields username and password.
+
+Response 200:
+
+```json
 {
   "access_token": "eyJ...",
   "refresh_token": "eyJ...",
   "token_type": "bearer",
   "expires_in": 1800
 }
-POST /auth/refresh
+```
 
-Rotate refresh token and issue new access token.
+### POST /auth/refresh
 
-Request
+Rotate refresh token and issue a new access token.
+
+Request body:
+
+```json
 {
   "refresh_token": "eyJ..."
 }
-POST /auth/logout
+```
+
+### POST /auth/logout
 
 Revoke the provided refresh token.
 
-Request
+Request body:
+
+```json
 {
   "refresh_token": "eyJ..."
 }
-Response — 204 No Content
-GET /auth/me
+```
 
-Get current authenticated user.
+Response is 204 No Content.
 
-Response — 200 OK
+### GET /auth/me
+
+Get the current authenticated user.
+
+Response 200:
+
+```json
 {
   "id": "uuid",
   "email": "user@example.com",
@@ -88,51 +106,58 @@ Response — 200 OK
   "is_verified": false,
   "is_active": true
 }
-Assessment Endpoints
-POST /assessments/sessions
+```
+
+## Assessment Endpoints
+
+### POST /assessments/sessions
 
 Start a new assessment session.
 
-GET /assessments/sessions/{session_id}
+### GET /assessments/sessions/{session_id}
 
-Get assessment session state.
+Get the current state of an assessment session.
 
-POST /assessments/sessions/{session_id}/responses
+### POST /assessments/sessions/{session_id}/responses
 
 Submit responses for a session.
 
-POST /assessments/sessions/{session_id}/complete
+### POST /assessments/sessions/{session_id}/complete
 
-Complete session and trigger scoring.
+Mark a session as complete and trigger scoring.
 
-Career Endpoints
-GET /careers
+## Career Endpoints
 
-List career paths with filters.
+### GET /careers
 
-GET /careers/{career_id}
+List career paths with optional filters.
 
-Get single career path details.
+### GET /careers/{career_id}
 
-GET /careers/recommendations
+Get details for a single career path.
 
-Get personalized recommendations for the authenticated user.
+### GET /careers/recommendations
 
-Error Responses
+Get personalized career recommendations for the authenticated user.
 
-All errors follow this structure:
+## Error Response Format
 
+All errors return this structure:
+
+```json
 {
   "detail": "Human readable error message",
   "code": "MACHINE_READABLE_CODE"
 }
-Status	Meaning
-400	Bad request / validation error
-401	Unauthenticated
-403	Forbidden (insufficient role)
-404	Resource not found
-409	Conflict (e.g. duplicate email)
-422	Unprocessable entity
-429	Rate limit exceeded
-500	Internal server error
+```
 
+Status code meanings:
+
+- 400 means bad request or validation error
+- 401 means unauthenticated
+- 403 means forbidden due to insufficient role
+- 404 means resource not found
+- 409 means conflict such as duplicate email
+- 422 means unprocessable entity
+- 429 means rate limit exceeded
+- 500 means internal server error
