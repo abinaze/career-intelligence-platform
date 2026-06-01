@@ -1,5 +1,6 @@
 # Career Intelligence Platform
 
+
 An enterprise-grade, AI-powered career guidance system built entirely on free and open-source technology.
 
 ## What This Is
