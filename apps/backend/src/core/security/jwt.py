@@ -1,0 +1,152 @@
+"""
+JWT token operations.
+
+Uses HS256 with easy upgrade path to RS256.
+Tokens carry minimal claims; user data is always fetched fresh from DB.
+"""
+
+from datetime import datetime, timedelta, timezone
+from typing import Any
+from uuid import UUID
+
+from jose import JWTError, jwt
+from passlib.context import CryptContext
+
+from src.core.config.settings import get_settings
+from src.core.logging.setup import get_logger
+
+logger = get_logger(__name__)
+_settings = get_settings()
+
+# Argon2id is the current gold standard for password hashing
+pwd_context = CryptContext(
+    schemes=["argon2"],
+    deprecated="auto",
+    argon2__time_cost=2,
+    argon2__memory_cost=65536,
+    argon2__parallelism=1,
+)
+
+
+class TokenType:
+    ACCESS = "access"
+    REFRESH = "refresh"
+    PASSWORD_RESET = "password_reset"
+
+
+def hash_password(password: str) -> str:
+    """Hash a plaintext password using Argon2id."""
+    return pwd_context.hash(password)
+
+
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    """Verify a plaintext password against its Argon2id hash."""
+    return pwd_context.verify(plain_password, hashed_password)
+
+
+def create_access_token(
+    user_id: UUID | str,
+    role: str,
+    extra_claims: dict[str, Any] | None = None,
+) -> str:
+    """
+    Create a short-lived JWT access token.
+
+    Claims: sub (user ID), role, type, iat, exp.
+    """
+    now = datetime.now(tz=timezone.utc)
+    expire = now + timedelta(minutes=_settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+
+    payload: dict[str, Any] = {
+        "sub": str(user_id),
+        "role": role,
+        "type": TokenType.ACCESS,
+        "iat": now,
+        "exp": expire,
+    }
+
+    if extra_claims:
+        payload.update(extra_claims)
+
+    return jwt.encode(
+        payload,
+        _settings.SECRET_KEY,
+        algorithm=_settings.JWT_ALGORITHM,
+    )
+
+
+def create_refresh_token(user_id: UUID | str) -> str:
+    """
+    Create a long-lived refresh token.
+
+    Refresh tokens are stored hashed in the database
+    to support revocation and rotation.
+    """
+    now = datetime.now(tz=timezone.utc)
+    expire = now + timedelta(days=_settings.REFRESH_TOKEN_EXPIRE_DAYS)
+
+    payload = {
+        "sub": str(user_id),
+        "type": TokenType.REFRESH,
+        "iat": now,
+        "exp": expire,
+    }
+
+    return jwt.encode(
+        payload,
+        _settings.SECRET_KEY,
+        algorithm=_settings.JWT_ALGORITHM,
+    )
+
+
+def decode_access_token(token: str) -> dict[str, Any]:
+    """
+    Decode and validate a JWT access token.
+
+    Raises JWTError if token is invalid, expired, or wrong type.
+    """
+    try:
+        payload = jwt.decode(
+            token,
+            _settings.SECRET_KEY,
+            algorithms=[_settings.JWT_ALGORITHM],
+        )
+
+        if payload.get("type") != TokenType.ACCESS:
+            raise JWTError("Invalid token type")
+
+        return payload
+
+    except JWTError as e:
+        logger.warning("JWT decode failed", error=str(e))
+        raise
+
+
+def decode_refresh_token(token: str) -> dict[str, Any]:
+    """Decode and validate a refresh token."""
+    try:
+        payload = jwt.decode(
+            token,
+            _settings.SECRET_KEY,
+            algorithms=[_settings.JWT_ALGORITHM],
+        )
+
+        if payload.get("type") != TokenType.REFRESH:
+            raise JWTError("Invalid token type")
+
+        return payload
+
+    except JWTError as e:
+        logger.warning("Refresh token decode failed", error=str(e))
+        raise
+
+
+def hash_token(token: str) -> str:
+    """
+    Hash a token string for secure database storage.
+
+    We store token hashes so a database breach does not
+    expose valid tokens.
+    """
+    import hashlib
+    return hashlib.sha256(token.encode()).hexdigest()
