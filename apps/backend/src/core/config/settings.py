@@ -5,6 +5,8 @@ All environment variables are validated at startup.
 Never access os.environ directly — always use the settings instance.
 """
 
+from __future__ import annotations
+
 from functools import lru_cache
 from pathlib import Path
 from typing import Annotated, Any, Literal
@@ -34,7 +36,7 @@ class Settings(BaseSettings):
     APP_NAME: str = "Career Intelligence Platform"
     APP_VERSION: str = "0.1.0"
     APP_DESCRIPTION: str = "AI-powered career guidance through behavioral analysis"
-    ENVIRONMENT: Literal["development", "staging", "production"] = "development"
+    ENVIRONMENT: Literal["development", "staging", "production", "testing"] = "development"
     DEBUG: bool = False
     LOG_LEVEL: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] = "INFO"
 
@@ -115,8 +117,12 @@ class Settings(BaseSettings):
         return self.ENVIRONMENT == "production"
 
     @property
+    def is_testing(self) -> bool:
+        return self.ENVIRONMENT == "testing"
+
+    @property
     def docs_enabled(self) -> bool:
-        return self.ENVIRONMENT != "production"
+        return self.ENVIRONMENT not in ("production", "testing")
 
 
 @lru_cache
