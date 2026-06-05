@@ -5,7 +5,10 @@ Uses HS256 with easy upgrade path to RS256.
 Tokens carry minimal claims; user data is always fetched fresh from DB.
 """
 
-from datetime import datetime, timedelta, timezone
+from __future__ import annotations
+
+import datetime
+import hashlib
 from typing import Any
 from uuid import UUID
 
@@ -18,7 +21,6 @@ from src.core.logging.setup import get_logger
 logger = get_logger(__name__)
 _settings = get_settings()
 
-# Argon2id is the current gold standard for password hashing
 pwd_context = CryptContext(
     schemes=["argon2"],
     deprecated="auto",
@@ -49,13 +51,9 @@ def create_access_token(
     role: str,
     extra_claims: dict[str, Any] | None = None,
 ) -> str:
-    """
-    Create a short-lived JWT access token.
-
-    Claims: sub (user ID), role, type, iat, exp.
-    """
-    now = datetime.now(tz=timezone.utc)
-    expire = now + timedelta(minutes=_settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+    """Create a short-lived JWT access token."""
+    now = datetime.datetime.now(tz=datetime.UTC)
+    expire = now + datetime.timedelta(minutes=_settings.ACCESS_TOKEN_EXPIRE_MINUTES)
 
     payload: dict[str, Any] = {
         "sub": str(user_id),
@@ -76,14 +74,9 @@ def create_access_token(
 
 
 def create_refresh_token(user_id: UUID | str) -> str:
-    """
-    Create a long-lived refresh token.
-
-    Refresh tokens are stored hashed in the database
-    to support revocation and rotation.
-    """
-    now = datetime.now(tz=timezone.utc)
-    expire = now + timedelta(days=_settings.REFRESH_TOKEN_EXPIRE_DAYS)
+    """Create a long-lived refresh token."""
+    now = datetime.datetime.now(tz=datetime.UTC)
+    expire = now + datetime.timedelta(days=_settings.REFRESH_TOKEN_EXPIRE_DAYS)
 
     payload = {
         "sub": str(user_id),
@@ -100,11 +93,7 @@ def create_refresh_token(user_id: UUID | str) -> str:
 
 
 def decode_access_token(token: str) -> dict[str, Any]:
-    """
-    Decode and validate a JWT access token.
-
-    Raises JWTError if token is invalid, expired, or wrong type.
-    """
+    """Decode and validate a JWT access token. Raises JWTError if invalid."""
     try:
         payload = jwt.decode(
             token,
@@ -142,11 +131,5 @@ def decode_refresh_token(token: str) -> dict[str, Any]:
 
 
 def hash_token(token: str) -> str:
-    """
-    Hash a token string for secure database storage.
-
-    We store token hashes so a database breach does not
-    expose valid tokens.
-    """
-    import hashlib
+    """Hash a token string for secure database storage."""
     return hashlib.sha256(token.encode()).hexdigest()
