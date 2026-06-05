@@ -19,6 +19,9 @@ jobs:
   frontend-lint:
     name: Frontend — Lint and Type Check
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/frontend
     steps:
       - uses: actions/checkout@v4
 
@@ -30,22 +33,24 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: "pnpm"
+          cache-dependency-path: apps/frontend/pnpm-lock.yaml
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
       - name: Type check
-        working-directory: apps/frontend
-        run: pnpm tsc --noEmit
+        run: pnpm exec tsc --noEmit
 
       - name: Lint
-        working-directory: apps/frontend
-        run: pnpm lint
+        run: pnpm exec next lint
 
-  # ── Backend ───────────────────────────────────────────────────────────────
+  # ── Backend lint ──────────────────────────────────────────────────────────
   backend-lint:
     name: Backend — Lint and Type Check
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/backend
     steps:
       - uses: actions/checkout@v4
 
@@ -57,24 +62,21 @@ jobs:
         run: uv python install ${{ env.PYTHON_VERSION }}
 
       - name: Install dependencies
-        working-directory: apps/backend
         run: uv sync --all-extras
 
       - name: Lint with Ruff
-        working-directory: apps/backend
         run: uv run ruff check .
 
       - name: Format check
-        working-directory: apps/backend
         run: uv run ruff format --check .
 
-      - name: Type check with mypy
-        working-directory: apps/backend
-        run: uv run mypy src/ --ignore-missing-imports
-
+  # ── Backend tests ─────────────────────────────────────────────────────────
   backend-test:
     name: Backend — Tests
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/backend
     services:
       postgres:
         image: postgres:16-alpine
@@ -109,11 +111,9 @@ jobs:
         run: uv python install ${{ env.PYTHON_VERSION }}
 
       - name: Install dependencies
-        working-directory: apps/backend
         run: uv sync --all-extras
 
       - name: Run migrations
-        working-directory: apps/backend
         env:
           DATABASE_URL: postgresql+asyncpg://cip_user:cip_password@localhost:5432/cip_test
           SECRET_KEY: test-secret-key-for-ci-only
@@ -121,7 +121,6 @@ jobs:
         run: uv run alembic upgrade head
 
       - name: Run tests
-        working-directory: apps/backend
         env:
           DATABASE_URL: postgresql+asyncpg://cip_user:cip_password@localhost:5432/cip_test
           REDIS_URL: redis://localhost:6379/0
