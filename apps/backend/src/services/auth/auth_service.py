@@ -5,12 +5,15 @@ This service owns all auth flows: register, login, token refresh,
 and logout. It coordinates between repositories and the security layer.
 """
 
-from datetime import datetime, timedelta, timezone
+from __future__ import annotations
+
+import datetime
 from uuid import UUID
 
 from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.core.config.settings import get_settings
 from src.core.logging.setup import get_logger
 from src.core.security.jwt import (
     create_access_token,
@@ -20,9 +23,8 @@ from src.core.security.jwt import (
     hash_token,
     verify_password,
 )
-from src.core.config.settings import get_settings
-from src.db.models.user import User, UserRole
 from src.db.models.profile import UserProfile
+from src.db.models.user import User, UserRole
 from src.db.repositories.user import RefreshTokenRepository, UserRepository
 from src.schemas.requests.auth import LoginRequest, RegisterRequest
 from src.schemas.responses.auth import AuthResponse, TokenResponse
@@ -71,11 +73,7 @@ class AuthService:
         self.db.add(profile)
         await self.db.flush()
 
-        logger.info(
-            "New user registered",
-            user_id=str(user.id),
-            email=email,
-        )
+        logger.info("New user registered", user_id=str(user.id), email=email)
 
         tokens = await self._issue_token_pair(user)
         return AuthResponse(user=user, tokens=tokens)
@@ -89,9 +87,7 @@ class AuthService:
         email = payload.email.lower().strip()
         user = await self.user_repo.get_by_email(email)
 
-        if not user or not verify_password(
-            payload.password, user.hashed_password
-        ):
+        if not user or not verify_password(payload.password, user.hashed_password):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid email or password",
@@ -118,11 +114,11 @@ class AuthService:
         """
         try:
             payload = decode_refresh_token(refresh_token)
-        except Exception:
+        except Exception as err:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid refresh token",
-            )
+            ) from err
 
         token_hash = hash_token(refresh_token)
         stored_token = await self.token_repo.get_valid_token(token_hash)
@@ -167,7 +163,7 @@ class AuthService:
         refresh_token = create_refresh_token(user.id)
 
         token_hash = hash_token(refresh_token)
-        expires_at = datetime.now(tz=timezone.utc) + timedelta(
+        expires_at = datetime.datetime.now(tz=datetime.UTC) + datetime.timedelta(
             days=_settings.REFRESH_TOKEN_EXPIRE_DAYS
         )
 
