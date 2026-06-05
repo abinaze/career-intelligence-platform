@@ -1,6 +1,8 @@
 """User-specific database queries."""
 
-from datetime import datetime, timezone
+from __future__ import annotations
+
+import datetime
 
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -35,9 +37,7 @@ class UserRepository(BaseRepository[User]):
     async def email_exists(self, email: str) -> bool:
         """Check if email is already registered."""
         result = await self.db.execute(
-            select(User.id).where(
-                User.email == email.lower().strip()
-            )
+            select(User.id).where(User.email == email.lower().strip())
         )
         return result.scalar_one_or_none() is not None
 
@@ -46,7 +46,7 @@ class UserRepository(BaseRepository[User]):
         await self.db.execute(
             update(User)
             .where(User.id == user_id)
-            .values(last_login_at=datetime.now(tz=timezone.utc))
+            .values(last_login_at=datetime.datetime.now(tz=datetime.UTC))
         )
         await self.db.flush()
 
@@ -55,12 +55,9 @@ class RefreshTokenRepository(BaseRepository[RefreshToken]):
     def __init__(self, db: AsyncSession) -> None:
         super().__init__(RefreshToken, db)
 
-    async def get_valid_token(
-        self,
-        token_hash: str,
-    ) -> RefreshToken | None:
+    async def get_valid_token(self, token_hash: str) -> RefreshToken | None:
         """Fetch a non-revoked, non-expired refresh token."""
-        now = datetime.now(tz=timezone.utc)
+        now = datetime.datetime.now(tz=datetime.UTC)
         result = await self.db.execute(
             select(RefreshToken).where(
                 RefreshToken.token_hash == token_hash,
@@ -71,8 +68,8 @@ class RefreshTokenRepository(BaseRepository[RefreshToken]):
         return result.scalar_one_or_none()
 
     async def revoke_all_user_tokens(self, user_id: object) -> None:
-        """Revoke all refresh tokens for a user on logout or password change."""
-        now = datetime.now(tz=timezone.utc)
+        """Revoke all refresh tokens for a user."""
+        now = datetime.datetime.now(tz=datetime.UTC)
         await self.db.execute(
             update(RefreshToken)
             .where(
@@ -85,7 +82,7 @@ class RefreshTokenRepository(BaseRepository[RefreshToken]):
 
     async def revoke_token(self, token_hash: str) -> None:
         """Revoke a specific token by its hash."""
-        now = datetime.now(tz=timezone.utc)
+        now = datetime.datetime.now(tz=datetime.UTC)
         await self.db.execute(
             update(RefreshToken)
             .where(RefreshToken.token_hash == token_hash)
