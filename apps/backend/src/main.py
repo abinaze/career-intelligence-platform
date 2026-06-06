@@ -4,9 +4,13 @@ Career Intelligence Platform — FastAPI Application Entry Point.
 This module wires together all routers, middleware, and lifecycle events.
 """
 
+from __future__ import annotations
+
+import uuid
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
+import structlog
 from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
@@ -74,9 +78,6 @@ def create_application() -> FastAPI:
 
     @app.middleware("http")
     async def add_request_id(request: Request, call_next):  # type: ignore[no-untyped-def]
-        import uuid
-        import structlog
-
         request_id = str(uuid.uuid4())
         with structlog.contextvars.bound_contextvars(request_id=request_id):
             response = await call_next(request)
