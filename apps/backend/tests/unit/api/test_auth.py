@@ -1,10 +1,9 @@
-"""Unit tests for auth endpoints and psychometric scorer."""
+"""Unit tests for auth endpoints and JWT security."""
 
 from __future__ import annotations
 
 from typing import Any
 
-import pytest
 from httpx import AsyncClient
 
 
@@ -130,29 +129,22 @@ class TestLogin:
         assert response.status_code == 403
 
 
-class TestPsychometricScorer:
-    """Unit tests for the psychometric scoring engine."""
+class TestJWT:
+    """Unit tests for JWT security utilities."""
 
-    def test_scorer_imports(self) -> None:
-        """Verify psychometric engine module can be imported."""
-        from src.core.security.jwt import (
-            create_access_token,
-            hash_password,
-            verify_password,
-        )
+    def test_password_hashing(self) -> None:
+        """Verify password hashing and verification."""
+        from src.core.security.jwt import hash_password, verify_password
 
         hashed = hash_password("TestPass123")
         assert verify_password("TestPass123", hashed)
         assert not verify_password("WrongPass123", hashed)
 
-    def test_jwt_token_creation(self) -> None:
+    def test_access_token_creation_and_decode(self) -> None:
         """Verify JWT tokens are created and decoded correctly."""
         import uuid
 
-        from src.core.security.jwt import (
-            create_access_token,
-            decode_access_token,
-        )
+        from src.core.security.jwt import create_access_token, decode_access_token
 
         user_id = uuid.uuid4()
         token = create_access_token(user_id, "user")
@@ -162,17 +154,12 @@ class TestPsychometricScorer:
         assert payload["role"] == "user"
         assert payload["type"] == "access"
 
-    def test_health_endpoint(
+    async def test_health_endpoint(
         self,
         client: AsyncClient,
     ) -> None:
-        """Verify health endpoint responds."""
-        import asyncio
-
-        async def _check() -> None:
-            response = await client.get("/health")
-            assert response.status_code == 200
-            data = response.json()
-            assert data["status"] == "ok"
-
-        asyncio.get_event_loop().run_until_complete(_check())
+        """Verify health endpoint responds correctly."""
+        response = await client.get("/health")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "ok"
