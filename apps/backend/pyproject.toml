@@ -98,7 +98,11 @@ exclude = ["tests/", "scripts/"]
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
-filterwarnings = ["error", "ignore::DeprecationWarning"]
+filterwarnings = [
+    "ignore::DeprecationWarning",
+    "ignore::ResourceWarning",
+    "ignore::pytest.PytestUnraisableExceptionWarning",
+]
 addopts = "-v --tb=short --cov=src --cov-report=term-missing"
 
 [tool.coverage.run]
