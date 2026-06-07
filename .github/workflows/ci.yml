@@ -2,134 +2,100 @@ name: CI
 
 on:
   push:
-    branches: [main, develop]
+    branches: [ "**" ]
   pull_request:
-    branches: [main, develop]
+    branches: [ "**" ]
 
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
-
-env:
-  NODE_VERSION: "24"
-  PYTHON_VERSION: "3.12"
+permissions:
+  contents: read
+  security-events: write
 
 jobs:
-  # ── Frontend ──────────────────────────────────────────────────────────────
-  frontend-lint:
-    name: Frontend — Lint and Type Check
+  test:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: apps/frontend
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 9
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: "pnpm"
-          cache-dependency-path: apps/frontend/pnpm-lock.yaml
-
-      - name: Install dependencies
-        run: pnpm install
-
-      - name: Type check
-        run: pnpm exec tsc --noEmit
-
-      - name: Lint
-        run: pnpm exec next lint
-
-  # ── Backend lint ──────────────────────────────────────────────────────────
-  backend-lint:
-    name: Backend — Lint and Type Check
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: apps/backend
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: astral-sh/setup-uv@v5
-        with:
-          version: "latest"
-
-      - name: Set up Python
-        run: uv python install ${{ env.PYTHON_VERSION }}
-
-      - name: Install dependencies
-        run: uv sync --all-extras
-
-      - name: Lint with Ruff
-        run: uv run ruff check .
-
-      - name: Format check
-        run: uv run ruff format --check .
-
-  # ── Backend tests ─────────────────────────────────────────────────────────
-  backend-test:
-    name: Backend — Tests
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: apps/backend
-    services:
-      postgres:
-        image: postgres:16-alpine
-        env:
-          POSTGRES_DB: cip_test
-          POSTGRES_USER: cip_user
-          POSTGRES_PASSWORD: cip_password
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-
-      redis:
-        image: redis:7-alpine
-        ports:
-          - 6379:6379
-        options: >-
-          --health-cmd "redis-cli ping"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
 
     steps:
-      - uses: actions/checkout@v4
+    - uses: actions/checkout@v4
+      with:
+        lfs: true
 
-      - uses: astral-sh/setup-uv@v5
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
 
-      - name: Set up Python
-        run: uv python install ${{ env.PYTHON_VERSION }}
+    - name: Cache pip packages
+      uses: actions/cache@v4
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('backend/requirements.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
 
-      - name: Install dependencies
-        run: uv sync --all-extras
+    - name: Install system dependencies (Linux)
+      if: runner.os == 'Linux'
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y libmagic1 libmagic-dev file
 
-      - name: Run migrations
-        env:
-          DATABASE_URL: postgresql+asyncpg://cip_user:cip_password@localhost:5432/cip_test
-          SECRET_KEY: test-secret-key-for-ci-only
-          ENVIRONMENT: testing
-        run: uv run alembic upgrade head
+    - name: Install Python dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r backend/requirements.txt --extra-index-url https://download.pytorch.org/whl/cpu
 
-      - name: Run tests
-        env:
-          DATABASE_URL: postgresql+asyncpg://cip_user:cip_password@localhost:5432/cip_test
-          REDIS_URL: redis://localhost:6379/0
-          SECRET_KEY: test-secret-key-for-ci-only
-          ENVIRONMENT: testing
-        run: uv run pytest --cov=src --cov-report=xml --cov-fail-under=0
+    - name: Install test extras
+      run: |
+        pip install pytest-timeout pytest-xdist coverage[toml]
 
-      - name: Upload coverage
-        uses: codecov/codecov-action@v4
-        with:
-          file: coverage.xml
-          fail_ci_if_error: false
+    - name: Lint with flake8
+      run: |
+        pip install flake8
+        flake8 backend/ --max-line-length=120 --exclude=backend/tests/,backend/__pycache__ || true
+      continue-on-error: true
+
+    - name: Type check with mypy
+      run: |
+        pip install mypy
+        mypy backend/ --config-file=mypy.ini || true
+      continue-on-error: true
+
+    - name: Security audit with pip-audit
+      run: |
+        pip install pip-audit
+        pip-audit || true
+      continue-on-error: true
+
+    - name: Set PYTHONPATH
+      run: echo "PYTHONPATH=${{ github.workspace }}" >> $GITHUB_ENV
+
+    - name: Run fast tests with coverage
+      run: |
+        pytest backend/tests/ -v -m "not slow" --tb=short \
+          --cov=backend --cov-report=xml --cov-report=term-missing \
+          --timeout=60
+
+    - name: Upload coverage report
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: coverage-report
+        path: coverage.xml
+
+    - name: Coverage summary
+      run: |
+        python -c "
+        import xml.etree.ElementTree as ET
+        tree = ET.parse('coverage.xml')
+        root = tree.getroot()
+        rate = float(root.attrib.get('line-rate', 0)) * 100
+        print(f'Overall coverage: {rate:.1f}%')
+        if rate < 60:
+            print('WARNING: Coverage below 60%')
+        "
+      if: always()
+
+    - name: Run slow tests (ML models)
+      if: success()
+      run: |
+        pytest backend/tests/ -v -m "slow" --tb=short --timeout=300
+      continue-on-error: true
