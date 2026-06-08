@@ -7,6 +7,8 @@ These are injected into route handlers to:
 - provide the current authenticated user
 """
 
+from __future__ import annotations
+
 from uuid import UUID
 
 from fastapi import Depends, HTTPException, status
@@ -55,8 +57,8 @@ async def get_current_user(
         if not user_id_str:
             raise credentials_exception
         user_id = UUID(user_id_str)
-    except (JWTError, ValueError):
-        raise credentials_exception
+    except (JWTError, ValueError) as err:
+        raise credentials_exception from err
 
     user = await auth_service.get_current_user(user_id)
     if not user.is_active:
@@ -68,16 +70,8 @@ async def get_current_user(
     return user
 
 
-def require_role(*roles: UserRole):
-    """
-    Role-based access control dependency factory.
-
-    Usage:
-        @router.delete("/users/{id}")
-        async def delete_user(
-            user: User = Depends(require_role(UserRole.ADMIN))
-        ):
-    """
+def require_role(*roles: UserRole):  # type: ignore[no-untyped-def]
+    """Role-based access control dependency factory."""
 
     async def _check_role(
         current_user: User = Depends(get_current_user),
