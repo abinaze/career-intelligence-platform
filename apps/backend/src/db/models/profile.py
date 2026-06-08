@@ -1,17 +1,11 @@
 """User profile and psychometric data models."""
 
+from __future__ import annotations
+
 import uuid
 from datetime import datetime
 
-from sqlalchemy import (
-    Boolean,
-    DateTime,
-    Float,
-    ForeignKey,
-    Integer,
-    String,
-    Text,
-)
+from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, String
 from sqlalchemy.dialects.postgresql import JSON, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -42,7 +36,9 @@ class UserProfile(Base):
 
     primary_goal: Mapped[str | None] = mapped_column(String(500), nullable=True)
     career_concerns: Mapped[list[str] | None] = mapped_column(JSON, nullable=True)
-    desired_work_environment: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    desired_work_environment: Mapped[str | None] = mapped_column(
+        String(200), nullable=True
+    )
 
     onboarding_completed: Mapped[bool] = mapped_column(
         Boolean, default=False, nullable=False
@@ -58,12 +54,12 @@ class UserProfile(Base):
         DateTime(timezone=True), nullable=True
     )
 
-    user: Mapped["User"] = relationship(  # type: ignore[name-defined]
+    user: Mapped[User] = relationship(
         "User",
         back_populates="profile",
     )
 
-    psychometric_scores: Mapped[list["PsychometricScore"]] = relationship(
+    psychometric_scores: Mapped[list[PsychometricScore]] = relationship(
         "PsychometricScore",
         back_populates="profile",
         cascade="all, delete-orphan",
@@ -106,17 +102,14 @@ class AssessmentSession(Base):
     raw_scores: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     metadata_: Mapped[dict | None] = mapped_column("metadata", JSON, nullable=True)
 
-    user: Mapped["User"] = relationship(  # type: ignore[name-defined]
+    user: Mapped[User] = relationship(
         "User",
         back_populates="assessment_sessions",
     )
 
 
 class PsychometricScore(Base):
-    """
-    Computed psychometric dimension scores for a user profile.
-    Each row represents one dimension.
-    """
+    """Computed psychometric dimension scores for a user profile."""
 
     __tablename__ = "psychometric_scores"
 
@@ -140,7 +133,11 @@ class PsychometricScore(Base):
 
     factor_breakdown: Mapped[dict | None] = mapped_column(JSON, nullable=True)
 
-    profile: Mapped["UserProfile"] = relationship(
+    profile: Mapped[UserProfile] = relationship(
         "UserProfile",
         back_populates="psychometric_scores",
     )
+
+
+# Forward reference imports
+from src.db.models.user import User  # noqa: E402
