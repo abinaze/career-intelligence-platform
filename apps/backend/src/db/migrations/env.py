@@ -3,6 +3,8 @@ Alembic migrations environment.
 Uses async SQLAlchemy engine to support asyncpg.
 """
 
+from __future__ import annotations
+
 import asyncio
 from logging.config import fileConfig
 
@@ -11,8 +13,8 @@ from sqlalchemy import pool
 from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
-from src.db.models import Base  # noqa: F401 — registers all models
 from src.core.config.settings import get_settings
+from src.db.models import Base  # registers all models for autogenerate
 
 _settings = get_settings()
 
@@ -27,7 +29,7 @@ config.set_main_option("sqlalchemy.url", _settings.DATABASE_URL)
 
 
 def run_migrations_offline() -> None:
-    """Run migrations in offline mode (generate SQL without DB connection)."""
+    """Run migrations in offline mode."""
     url = config.get_main_option("sqlalchemy.url")
     context.configure(
         url=url,
