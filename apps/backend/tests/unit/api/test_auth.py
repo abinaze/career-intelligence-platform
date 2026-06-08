@@ -121,16 +121,17 @@ class TestLogin:
         assert response.status_code == 200
         assert response.json()["email"] == test_user_data["email"]
 
-    async def test_get_me_unauthenticated(
+    async def test_get_me_no_token(
         self,
         client: AsyncClient,
     ) -> None:
         response = await client.get("/api/v1/auth/me")
+        # HTTPBearer returns 403 when no credentials are provided
         assert response.status_code == 403
 
 
 class TestJWT:
-    """Unit tests for JWT security utilities."""
+    """Unit tests for JWT security utilities (no DB required)."""
 
     def test_password_hashing(self) -> None:
         """Verify password hashing and verification."""
@@ -154,12 +155,10 @@ class TestJWT:
         assert payload["role"] == "user"
         assert payload["type"] == "access"
 
-    async def test_health_endpoint(
-        self,
-        client: AsyncClient,
-    ) -> None:
-        """Verify health endpoint responds correctly."""
-        response = await client.get("/health")
-        assert response.status_code == 200
-        data = response.json()
-        assert data["status"] == "ok"
+    def test_hash_token(self) -> None:
+        """Verify token hashing is deterministic."""
+        from src.core.security.jwt import hash_token
+
+        token = "some-refresh-token-value"
+        assert hash_token(token) == hash_token(token)
+        assert len(hash_token(token)) == 64  # SHA-256 hex digest
