@@ -1,8 +1,10 @@
 """User domain model."""
 
+from __future__ import annotations
+
 import uuid
 from datetime import datetime
-from enum import Enum
+from enum import StrEnum
 
 from sqlalchemy import Boolean, DateTime, ForeignKey, String
 from sqlalchemy.dialects.postgresql import UUID
@@ -11,7 +13,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from src.db.models.base import Base
 
 
-class UserRole(str, Enum):
+class UserRole(StrEnum):
     USER = "user"
     COUNSELOR = "counselor"
     ADMIN = "admin"
@@ -20,7 +22,6 @@ class UserRole(str, Enum):
 class User(Base):
     """
     Core user account model.
-
     Stores authentication credentials and basic identity.
     Extended profile data lives in UserProfile.
     """
@@ -73,8 +74,7 @@ class User(Base):
         nullable=True,
     )
 
-    # Relationships
-    profile: Mapped["UserProfile"] = relationship(  # type: ignore[name-defined]
+    profile: Mapped[UserProfile] = relationship(
         "UserProfile",
         back_populates="user",
         uselist=False,
@@ -82,14 +82,14 @@ class User(Base):
         lazy="select",
     )
 
-    refresh_tokens: Mapped[list["RefreshToken"]] = relationship(
+    refresh_tokens: Mapped[list[RefreshToken]] = relationship(
         "RefreshToken",
         back_populates="user",
         cascade="all, delete-orphan",
         lazy="select",
     )
 
-    assessment_sessions: Mapped[list["AssessmentSession"]] = relationship(  # type: ignore[name-defined]
+    assessment_sessions: Mapped[list[AssessmentSession]] = relationship(
         "AssessmentSession",
         back_populates="user",
         cascade="all, delete-orphan",
@@ -100,8 +100,6 @@ class User(Base):
 class RefreshToken(Base):
     """
     Stored refresh tokens for token rotation.
-
-    Only the most recent token per user is valid.
     Revoked tokens are retained for audit purposes.
     """
 
@@ -136,7 +134,11 @@ class RefreshToken(Base):
         nullable=True,
     )
 
-    user: Mapped["User"] = relationship(
+    user: Mapped[User] = relationship(
         "User",
         back_populates="refresh_tokens",
     )
+
+
+# Forward reference imports — placed after class definitions to avoid circular imports
+from src.db.models.profile import AssessmentSession, UserProfile  # noqa: E402
