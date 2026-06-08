@@ -3,16 +3,14 @@ Authentication API endpoints.
 All routes are prefixed with /api/v1/auth
 """
 
+from __future__ import annotations
+
 from fastapi import APIRouter, Depends, Response, status
 from fastapi.security import OAuth2PasswordRequestForm
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.api.v1.dependencies.auth import get_auth_service, get_current_user
-from src.db.engine import get_db
 from src.db.models.user import User
 from src.schemas.requests.auth import (
-    PasswordResetConfirm,
-    PasswordResetRequest,
     RefreshTokenRequest,
     RegisterRequest,
 )
@@ -34,8 +32,7 @@ async def register(
 ) -> AuthResponse:
     """
     Create a new user account and return an auth token pair.
-    - Email must be unique
-    - Password requires uppercase, lowercase, and digit
+    Email must be unique. Password requires uppercase, lowercase, and digit.
     """
     return await auth_service.register(payload)
 
@@ -52,7 +49,6 @@ async def login_oauth2(
     """
     OAuth2-compatible login endpoint.
     Accepts form data with username (email) and password.
-    Returns access and refresh tokens.
     """
     from src.schemas.requests.auth import LoginRequest
 
