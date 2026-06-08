@@ -7,6 +7,8 @@ All domain models inherit from this base which provides:
 - dict serialization helper
 """
 
+from __future__ import annotations
+
 import uuid
 from datetime import datetime
 from typing import Any
