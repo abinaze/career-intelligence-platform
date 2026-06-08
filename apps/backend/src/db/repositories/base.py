@@ -5,18 +5,20 @@ Implements standard CRUD operations using SQLAlchemy 2.0 async.
 Concrete repositories extend this and add domain-specific queries.
 """
 
-from typing import Any, Generic, TypeVar
+from __future__ import annotations
+
+from typing import Any
 from uuid import UUID
 
-from sqlalchemy import select, update
+from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.db.models.base import Base
 
-ModelT = TypeVar("ModelT", bound=Base)
+type ModelT = Base  # noqa: UP040
 
 
-class BaseRepository(Generic[ModelT]):
+class BaseRepository[ModelT: Base]:
     """
     Generic async repository with standard CRUD operations.
 
@@ -81,7 +83,6 @@ class BaseRepository(Generic[ModelT]):
 
     async def count(self) -> int:
         """Return total record count."""
-        from sqlalchemy import func
         result = await self.db.execute(
             select(func.count()).select_from(self.model)
         )
