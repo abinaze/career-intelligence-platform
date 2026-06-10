@@ -36,7 +36,7 @@ jobs:
         run: ./node_modules/.bin/tsc --noEmit
       - name: Lint
         working-directory: apps/frontend
-        run: ./node_modules/.bin/next lint
+        run: pnpm run lint
 
   backend-lint:
     name: Backend — Lint and Type Check
