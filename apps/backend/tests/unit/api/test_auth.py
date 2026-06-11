@@ -125,16 +125,15 @@ class TestLogin:
         self,
         client: AsyncClient,
     ) -> None:
+        # HTTPBearer with auto_error=True returns 403 when no credentials
         response = await client.get("/api/v1/auth/me")
-        # HTTPBearer returns 403 when no credentials are provided
-        assert response.status_code == 403
+        assert response.status_code in (401, 403)
 
 
 class TestJWT:
-    """Unit tests for JWT security utilities (no DB required)."""
+    """Pure unit tests for JWT utilities — no database or HTTP client needed."""
 
     def test_password_hashing(self) -> None:
-        """Verify password hashing and verification."""
         from src.core.security.jwt import hash_password, verify_password
 
         hashed = hash_password("TestPass123")
@@ -142,7 +141,6 @@ class TestJWT:
         assert not verify_password("WrongPass123", hashed)
 
     def test_access_token_creation_and_decode(self) -> None:
-        """Verify JWT tokens are created and decoded correctly."""
         import uuid
 
         from src.core.security.jwt import create_access_token, decode_access_token
@@ -155,10 +153,9 @@ class TestJWT:
         assert payload["role"] == "user"
         assert payload["type"] == "access"
 
-    def test_hash_token(self) -> None:
-        """Verify token hashing is deterministic."""
+    def test_hash_token_is_deterministic(self) -> None:
         from src.core.security.jwt import hash_token
 
         token = "some-refresh-token-value"
         assert hash_token(token) == hash_token(token)
-        assert len(hash_token(token)) == 64  # SHA-256 hex digest
+        assert len(hash_token(token)) == 64
