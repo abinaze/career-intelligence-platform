@@ -80,7 +80,7 @@ ignore = [
 ]
 
 [tool.ruff.lint.per-file-ignores]
-"tests/*" = ["ANN", "S", "N"]
+"tests/*" = ["ANN", "S", "N", "I001"]
 "src/scripts/*" = ["ANN", "S"]
 
 [tool.ruff.lint.isort]
@@ -113,3 +113,4 @@ omit = ["tests/*", "src/scripts/*"]
 show_missing = true
 skip_covered = false
 fail_under = 0
+
