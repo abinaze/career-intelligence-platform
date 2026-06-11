@@ -1,8 +1,7 @@
 """
 Pytest configuration and shared fixtures.
 
-Each test gets a completely fresh database connection to avoid
-asyncpg 'another operation is in progress' errors.
+Each test gets a truncated database to avoid unique constraint violations.
 """
 
 from __future__ import annotations
@@ -17,6 +16,7 @@ import pytest_asyncio
 import structlog
 from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import (
     AsyncSession,
     async_sessionmaker,
@@ -61,12 +61,24 @@ async def setup_database():  # type: ignore[no-untyped-def]
     await engine.dispose()
 
 
+@pytest_asyncio.fixture(autouse=True)
+async def clean_tables(setup_database: None) -> AsyncGenerator[None, None]:
+    """Truncate all tables before each test to ensure isolation."""
+    engine = create_async_engine(TEST_DATABASE_URL, poolclass=NullPool)
+    async with engine.begin() as conn:
+        await conn.execute(
+            text(
+                "TRUNCATE TABLE refresh_tokens, psychometric_scores, "
+                "assessment_sessions, user_profiles, users RESTART IDENTITY CASCADE"
+            )
+        )
+    await engine.dispose()
+    yield
+
+
 @pytest_asyncio.fixture
 async def db_session(setup_database: None) -> AsyncGenerator[AsyncSession, None]:
-    """
-    Provide a fresh database session per test.
-    Uses NullPool so each test gets a brand new connection.
-    """
+    """Provide a fresh database session per test."""
     engine = create_async_engine(TEST_DATABASE_URL, poolclass=NullPool)
     session_factory = async_sessionmaker(
         engine,
@@ -78,7 +90,6 @@ async def db_session(setup_database: None) -> AsyncGenerator[AsyncSession, None]
     async with session_factory() as session:
         try:
             yield session
-            await session.rollback()
         finally:
             await session.close()
 
