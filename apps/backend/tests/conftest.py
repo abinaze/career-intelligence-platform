@@ -1,18 +1,20 @@
 """
 Pytest configuration and shared fixtures.
 
-Uses a test database with transaction rollback strategy
-to keep tests isolated without resetting the schema.
+Each test gets a completely fresh database connection to avoid
+asyncpg 'another operation is in progress' errors.
 """
 
 from __future__ import annotations
 
-import asyncio
+import logging
 import os
 from collections.abc import AsyncGenerator
 from typing import Any
 
+import pytest
 import pytest_asyncio
+import structlog
 from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import (
@@ -20,49 +22,67 @@ from sqlalchemy.ext.asyncio import (
     async_sessionmaker,
     create_async_engine,
 )
+from sqlalchemy.pool import NullPool
 
 from src.db.engine import get_db
 from src.db.models.base import Base
 from src.main import create_application
 
-TEST_DATABASE_URL = (
-    "postgresql+asyncpg://cip_user:cip_password@localhost:5432/cip_test"
+TEST_DATABASE_URL = os.getenv(
+    "DATABASE_URL",
+    "postgresql+asyncpg://cip_user:cip_password@localhost:5432/cip_test",
 )
 
 
-@pytest_asyncio.fixture(scope="session")
-async def test_engine():  # type: ignore[no-untyped-def]
-    """Create test engine once per session."""
-    db_url = os.getenv("DATABASE_URL", TEST_DATABASE_URL)
-    engine = create_async_engine(db_url, echo=False)
+def pytest_configure(config: Any) -> None:
+    """Configure structlog to use stdlib so logger.name works in tests."""
+    structlog.configure(
+        processors=[
+            structlog.stdlib.add_log_level,
+            structlog.stdlib.PositionalArgumentsFormatter(),
+            structlog.dev.ConsoleRenderer(),
+        ],
+        wrapper_class=structlog.make_filtering_bound_logger(logging.DEBUG),
+        context_class=dict,
+        logger_factory=structlog.stdlib.LoggerFactory(),
+        cache_logger_on_first_use=False,
+    )
 
+
+@pytest_asyncio.fixture(scope="session")
+async def setup_database():  # type: ignore[no-untyped-def]
+    """Create all tables once per session, drop after."""
+    engine = create_async_engine(TEST_DATABASE_URL, poolclass=NullPool)
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
-
-    yield engine
-
+    yield
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)
-
     await engine.dispose()
 
 
 @pytest_asyncio.fixture
-async def db_session(test_engine) -> AsyncGenerator[AsyncSession, None]:  # type: ignore[no-untyped-def]
+async def db_session(setup_database: None) -> AsyncGenerator[AsyncSession, None]:
     """
-    Provide an isolated test database session.
-    Each test runs inside a savepoint that is rolled back after the test.
+    Provide a fresh database session per test.
+    Uses NullPool so each test gets a brand new connection.
     """
+    engine = create_async_engine(TEST_DATABASE_URL, poolclass=NullPool)
     session_factory = async_sessionmaker(
-        test_engine,
+        engine,
         expire_on_commit=False,
         autocommit=False,
         autoflush=False,
     )
 
-    async with session_factory() as session, session.begin():
-        yield session
-        await session.rollback()
+    async with session_factory() as session:
+        try:
+            yield session
+            await session.rollback()
+        finally:
+            await session.close()
+
+    await engine.dispose()
 
 
 @pytest_asyncio.fixture
@@ -86,30 +106,6 @@ async def client(app: FastAPI) -> AsyncGenerator[AsyncClient, None]:
     ) as ac:
         yield ac
 
-
-def pytest_configure(config: Any) -> None:  # type: ignore[no-untyped-def]
-    """Configure structlog for testing to avoid PrintLogger.name errors."""
-    import logging
-    import structlog
-
-    structlog.configure(
-        processors=[
-            structlog.stdlib.add_log_level,
-            structlog.stdlib.PositionalArgumentsFormatter(),
-            structlog.dev.ConsoleRenderer(),
-        ],
-        wrapper_class=structlog.make_filtering_bound_logger(logging.DEBUG),
-        context_class=dict,
-        logger_factory=structlog.stdlib.LoggerFactory(),
-        cache_logger_on_first_use=False,
-    )
-
-
-def pytest_fixture_setup(fixturedef: Any, request: Any) -> None:
-    pass
-
-
-import pytest  # noqa: E402
 
 @pytest.fixture
 def test_user_data() -> dict[str, Any]:
