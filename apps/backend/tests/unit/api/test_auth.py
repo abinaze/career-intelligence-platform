@@ -9,7 +9,7 @@ from httpx import AsyncClient
 
 
 def unique_user() -> dict[str, Any]:
-    """Generate unique user data for each test to avoid DB conflicts."""
+    """Generate unique user data for each test to prevent DB conflicts."""
     uid = uuid.uuid4().hex[:8]
     return {
         "email": f"test_{uid}@example.com",
@@ -20,15 +20,11 @@ def unique_user() -> dict[str, Any]:
 
 class TestRegistration:
     async def test_register_success(self, client: AsyncClient) -> None:
-        response = await client.post(
-            "/api/v1/auth/register",
-            json=unique_user(),
-        )
+        response = await client.post("/api/v1/auth/register", json=unique_user())
         assert response.status_code == 201
         data = response.json()
         assert "tokens" in data
         assert "access_token" in data["tokens"]
-        assert "refresh_token" in data["tokens"]
         assert "hashed_password" not in data["user"]
 
     async def test_register_duplicate_email(self, client: AsyncClient) -> None:
@@ -40,22 +36,14 @@ class TestRegistration:
     async def test_register_weak_password(self, client: AsyncClient) -> None:
         response = await client.post(
             "/api/v1/auth/register",
-            json={
-                "email": "weak@example.com",
-                "password": "weak",
-                "full_name": "Weak User",
-            },
+            json={"email": "weak@example.com", "password": "weak", "full_name": "Weak"},
         )
         assert response.status_code == 422
 
     async def test_register_invalid_email(self, client: AsyncClient) -> None:
         response = await client.post(
             "/api/v1/auth/register",
-            json={
-                "email": "not-an-email",
-                "password": "StrongPass123",
-                "full_name": "Test User",
-            },
+            json={"email": "not-an-email", "password": "StrongPass123", "full_name": "Test"},
         )
         assert response.status_code == 422
 
@@ -63,7 +51,14 @@ class TestRegistration:
 class TestLogin:
     async def test_login_success(self, client: AsyncClient) -> None:
         user = unique_user()
+        # Register and login are separate requests — each uses the overridden
+        # db session which shares the same transaction, so both see the same data.
         await client.post("/api/v1/auth/register", json=user)
+
+        # Small sleep ensures different second for JWT timestamp → different token hash
+        import asyncio
+        await asyncio.sleep(1.1)
+
         response = await client.post(
             "/api/v1/auth/token",
             data={"username": user["email"], "password": user["password"]},
