@@ -7,7 +7,7 @@ All domain models inherit from this base which provides:
 - dict serialization helper
 """
 
-from __future__ import annotations
+from __future__ import annotations  # noqa: I001
 
 import uuid
 from datetime import datetime
