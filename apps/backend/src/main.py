@@ -2,7 +2,7 @@
 Career Intelligence Platform — FastAPI Application Entry Point.
 """
 
-from __future__ import annotations
+from __future__ import annotations  # noqa: I001
 
 import uuid
 from collections.abc import AsyncGenerator
@@ -14,7 +14,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import JSONResponse
 
-from src.api.v1.endpoints.auth import router as auth_router  # noqa: I001
+from src.api.v1.endpoints.auth import router as auth_router
 from src.core.config.settings import get_settings
 from src.core.logging.setup import configure_logging, get_logger
 from src.db.engine import check_database_connection
@@ -62,7 +62,9 @@ def create_application() -> FastAPI:
     app.add_middleware(GZipMiddleware, minimum_size=1000)
 
     @app.middleware("http")
-    async def add_request_id(request: Request, call_next):  # type: ignore[no-untyped-def]
+    async def add_request_id(  # type: ignore[no-untyped-def]
+        request: Request, call_next
+    ):
         request_id = str(uuid.uuid4())
         with structlog.contextvars.bound_contextvars(request_id=request_id):
             response = await call_next(request)
