@@ -101,6 +101,7 @@ class AuthService:
             )
 
         await self.user_repo.update_last_login(user.id)
+        await self.db.refresh(user)
         tokens = await self._issue_token_pair(user)
 
         logger.info("User logged in", user_id=str(user.id))
@@ -180,3 +181,4 @@ class AuthService:
             token_type="bearer",
             expires_in=_settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
         )
+
