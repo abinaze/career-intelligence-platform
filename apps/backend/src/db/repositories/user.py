@@ -28,17 +28,13 @@ class UserRepository(BaseRepository[User]):
     async def get_with_profile(self, user_id: object) -> User | None:
         """Fetch user with eagerly loaded profile."""
         result = await self.db.execute(
-            select(User)
-            .where(User.id == user_id)
-            .options(selectinload(User.profile))
+            select(User).where(User.id == user_id).options(selectinload(User.profile))
         )
         return result.scalar_one_or_none()
 
     async def email_exists(self, email: str) -> bool:
         """Check if email is already registered."""
-        result = await self.db.execute(
-            select(User.id).where(User.email == email.lower().strip())
-        )
+        result = await self.db.execute(select(User.id).where(User.email == email.lower().strip()))
         return result.scalar_one_or_none() is not None
 
     async def update_last_login(self, user_id: object) -> None:

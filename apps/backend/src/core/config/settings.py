@@ -68,9 +68,7 @@ class Settings(BaseSettings):
     CORS_ALLOW_HEADERS: list[str] = ["*"]
 
     # ── Database ──────────────────────────────────────────────────────────────
-    DATABASE_URL: str = (
-        "postgresql+asyncpg://cip_user:cip_password@localhost:5432/cip_db"
-    )
+    DATABASE_URL: str = "postgresql+asyncpg://cip_user:cip_password@localhost:5432/cip_db"
     DATABASE_POOL_SIZE: int = 10
     DATABASE_MAX_OVERFLOW: int = 20
     DATABASE_POOL_TIMEOUT: int = 30

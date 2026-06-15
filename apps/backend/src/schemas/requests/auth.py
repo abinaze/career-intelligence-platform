@@ -12,17 +12,11 @@ class RegisterRequest(BaseModel):
     @classmethod
     def validate_password_strength(cls, v: str) -> str:
         if not any(c.isupper() for c in v):
-            raise ValueError(
-                "Password must contain at least one uppercase letter"
-            )
+            raise ValueError("Password must contain at least one uppercase letter")
         if not any(c.islower() for c in v):
-            raise ValueError(
-                "Password must contain at least one lowercase letter"
-            )
+            raise ValueError("Password must contain at least one lowercase letter")
         if not any(c.isdigit() for c in v):
-            raise ValueError(
-                "Password must contain at least one digit"
-            )
+            raise ValueError("Password must contain at least one digit")
         return v
 
     @field_validator("full_name")

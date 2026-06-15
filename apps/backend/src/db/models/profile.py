@@ -36,18 +36,12 @@ class UserProfile(Base):
 
     primary_goal: Mapped[str | None] = mapped_column(String(500), nullable=True)
     career_concerns: Mapped[list[str] | None] = mapped_column(JSON, nullable=True)
-    desired_work_environment: Mapped[str | None] = mapped_column(
-        String(200), nullable=True
-    )
+    desired_work_environment: Mapped[str | None] = mapped_column(String(200), nullable=True)
 
-    onboarding_completed: Mapped[bool] = mapped_column(
-        Boolean, default=False, nullable=False
-    )
+    onboarding_completed: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     onboarding_step: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
 
-    completeness_score: Mapped[float] = mapped_column(
-        Float, default=0.0, nullable=False
-    )
+    completeness_score: Mapped[float] = mapped_column(Float, default=0.0, nullable=False)
 
     profile_embedding: Mapped[list[float] | None] = mapped_column(JSON, nullable=True)
     embedding_updated_at: Mapped[datetime | None] = mapped_column(
@@ -79,9 +73,7 @@ class AssessmentSession(Base):
         index=True,
     )
 
-    assessment_type: Mapped[str] = mapped_column(
-        String(100), nullable=False, index=True
-    )
+    assessment_type: Mapped[str] = mapped_column(String(100), nullable=False, index=True)
 
     status: Mapped[str] = mapped_column(
         String(50),
@@ -90,13 +82,9 @@ class AssessmentSession(Base):
         index=True,
     )
 
-    started_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False
-    )
+    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
-    completed_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     responses: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     raw_scores: Mapped[dict | None] = mapped_column(JSON, nullable=True)
