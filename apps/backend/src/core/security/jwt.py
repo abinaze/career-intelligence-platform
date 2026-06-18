@@ -3,10 +3,6 @@ JWT token operations.
 
 Uses HS256 with easy upgrade path to RS256.
 Tokens carry minimal claims; user data is always fetched fresh from DB.
-
-Previously used python-jose which transitively depended on the
-vulnerable ecdsa library (Minerva timing attack, CVE-2024-23342).
-Migrated to PyJWT which has no such dependency.
 """
 
 from __future__ import annotations
@@ -16,8 +12,7 @@ import hashlib
 from typing import Any
 from uuid import UUID
 
-import jwt
-from jwt import DecodeError, ExpiredSignatureError, InvalidTokenError
+from jose import JWTError, jwt
 from passlib.context import CryptContext
 
 from src.core.config.settings import get_settings
@@ -33,10 +28,6 @@ pwd_context = CryptContext(
     argon2__memory_cost=65536,
     argon2__parallelism=1,
 )
-
-
-class TokenError(Exception):
-    """Raised when a JWT cannot be decoded or validated."""
 
 
 class TokenType:
@@ -102,47 +93,41 @@ def create_refresh_token(user_id: UUID | str) -> str:
 
 
 def decode_access_token(token: str) -> dict[str, Any]:
-    """Decode and validate a JWT access token. Raises TokenError if invalid."""
+    """Decode and validate a JWT access token. Raises JWTError if invalid."""
     try:
-        payload: dict[str, Any] = jwt.decode(
+        payload = jwt.decode(
             token,
             _settings.SECRET_KEY,
             algorithms=[_settings.JWT_ALGORITHM],
         )
 
         if payload.get("type") != TokenType.ACCESS:
-            raise TokenError("Invalid token type")
+            raise JWTError("Invalid token type")
 
         return payload
 
-    except ExpiredSignatureError as e:
-        logger.warning("JWT expired", error=str(e))
-        raise TokenError("Token has expired") from e
-    except (DecodeError, InvalidTokenError) as e:
+    except JWTError as e:
         logger.warning("JWT decode failed", error=str(e))
-        raise TokenError("Token is invalid") from e
+        raise
 
 
 def decode_refresh_token(token: str) -> dict[str, Any]:
-    """Decode and validate a refresh token. Raises TokenError if invalid."""
+    """Decode and validate a refresh token."""
     try:
-        payload: dict[str, Any] = jwt.decode(
+        payload = jwt.decode(
             token,
             _settings.SECRET_KEY,
             algorithms=[_settings.JWT_ALGORITHM],
         )
 
         if payload.get("type") != TokenType.REFRESH:
-            raise TokenError("Invalid token type")
+            raise JWTError("Invalid token type")
 
         return payload
 
-    except ExpiredSignatureError as e:
-        logger.warning("Refresh token expired", error=str(e))
-        raise TokenError("Token has expired") from e
-    except (DecodeError, InvalidTokenError) as e:
+    except JWTError as e:
         logger.warning("Refresh token decode failed", error=str(e))
-        raise TokenError("Token is invalid") from e
+        raise
 
 
 def hash_token(token: str) -> str:
