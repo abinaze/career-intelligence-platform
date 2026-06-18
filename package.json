@@ -35,5 +35,13 @@
       "ruff check --fix",
       "ruff format"
     ]
+  },
+  "pnpm": {
+    "overrides": {
+      "postcss": ">=8.5.0",
+      "form-data": ">=4.0.6",
+      "js-yaml": ">=4.2.0",
+      "vite": ">=8.2.0"
+    }
   }
 }
