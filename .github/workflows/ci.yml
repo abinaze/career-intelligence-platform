@@ -31,18 +31,6 @@ jobs:
       - name: Install dependencies
         working-directory: apps/frontend
         run: pnpm install
-      - name: Commit regenerated lockfile (temporary security-fix step)
-        if: github.ref == 'refs/heads/fix/dependabot-security-alerts'
-        run: |
-          if ! git diff --quiet -- pnpm-lock.yaml apps/frontend/pnpm-lock.yaml 2>/dev/null; then
-            git config user.name "github-actions[bot]"
-            git config user.email "github-actions[bot]@users.noreply.github.com"
-            git add pnpm-lock.yaml apps/frontend/pnpm-lock.yaml 2>/dev/null || true
-            git commit -m "chore: regenerate pnpm-lock.yaml with patched transitive deps [skip ci]"
-            git push origin HEAD:fix/dependabot-security-alerts
-          else
-            echo "No lockfile changes to commit"
-          fi
       - name: Type check
         working-directory: apps/frontend
         run: ./node_modules/.bin/tsc --noEmit
