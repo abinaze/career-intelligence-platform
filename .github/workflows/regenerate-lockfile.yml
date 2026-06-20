@@ -1,0 +1,55 @@
+name: Regenerate Frontend Lockfile
+
+on:
+  workflow_dispatch:
+
+jobs:
+  regenerate:
+    name: Regenerate pnpm-lock.yaml
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+
+      - name: Regenerate lockfile
+        working-directory: apps/frontend
+        run: |
+          rm -f pnpm-lock.yaml
+          pnpm install
+
+      - name: Show resolved versions
+        working-directory: apps/frontend
+        run: |
+          echo "--- next ---"
+          grep "next@" pnpm-lock.yaml | head -3
+          echo "--- vite ---"
+          grep "vite@" pnpm-lock.yaml | head -3
+          echo "--- postcss ---"
+          grep "postcss@" pnpm-lock.yaml | head -3
+          echo "--- form-data ---"
+          grep "form-data@" pnpm-lock.yaml | head -3
+          echo "--- js-yaml ---"
+          grep "js-yaml@" pnpm-lock.yaml | head -3
+
+      - name: Commit and push regenerated lockfile
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add apps/frontend/pnpm-lock.yaml
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "chore: regenerate pnpm-lock.yaml [skip ci]"
+            git push origin HEAD:${{ github.ref_name }}
+          fi
