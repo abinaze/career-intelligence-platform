@@ -13,11 +13,10 @@ from uuid import UUID
 
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from jose import JWTError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.core.logging.setup import get_logger
-from src.core.security.jwt import decode_access_token
+from src.core.security.jwt import TokenError, decode_access_token
 from src.db.engine import get_db
 from src.db.models.user import User, UserRole
 from src.services.auth.auth_service import AuthService
@@ -57,7 +56,7 @@ async def get_current_user(
         if not user_id_str:
             raise credentials_exception
         user_id = UUID(user_id_str)
-    except (JWTError, ValueError) as err:
+    except (TokenError, ValueError) as err:
         raise credentials_exception from err
 
     user = await auth_service.get_current_user(user_id)
