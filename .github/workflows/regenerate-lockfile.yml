@@ -22,17 +22,22 @@ jobs:
         with:
           node-version: "24"
 
-      - name: Regenerate lockfile from workspace root
+      - name: Copy overrides into frontend package.json then regenerate
+        working-directory: apps/frontend
         run: |
           rm -f pnpm-lock.yaml
+          node -e "
+            const fs = require('fs');
+            const root = JSON.parse(fs.readFileSync('../../package.json'));
+            const pkg = JSON.parse(fs.readFileSync('package.json'));
+            pkg.pnpm = root.pnpm;
+            fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n');
+            console.log('Copied overrides:', JSON.stringify(root.pnpm));
+          "
           pnpm install --no-frozen-lockfile
 
-      - name: Verify pnpm-lock.yaml was created at root
-        run: |
-          ls -lh pnpm-lock.yaml
-          wc -l pnpm-lock.yaml
-
       - name: Show resolved versions
+        working-directory: apps/frontend
         run: |
           echo "--- next ---"
           grep "next@" pnpm-lock.yaml | head -5
@@ -49,7 +54,8 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add pnpm-lock.yaml
+          git checkout -- apps/frontend/package.json
+          git add apps/frontend/pnpm-lock.yaml
           if git diff --staged --quiet; then
             echo "No changes to commit"
           else
