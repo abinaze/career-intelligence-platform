@@ -23,33 +23,31 @@ jobs:
           node-version: "24"
 
       - name: Regenerate lockfile
-        working-directory: apps/frontend
         run: |
           rm -f pnpm-lock.yaml
           pnpm install
 
       - name: Show resolved versions
-        working-directory: apps/frontend
         run: |
           echo "--- next ---"
-          grep "next@" pnpm-lock.yaml | head -3
+          grep "next@" pnpm-lock.yaml | head -5
           echo "--- vite ---"
-          grep "vite@" pnpm-lock.yaml | head -3
+          grep "vite@" pnpm-lock.yaml | head -5
           echo "--- postcss ---"
-          grep "postcss@" pnpm-lock.yaml | head -3
+          grep "postcss@" pnpm-lock.yaml | head -5
           echo "--- form-data ---"
-          grep "form-data@" pnpm-lock.yaml | head -3
+          grep "form-data@" pnpm-lock.yaml | head -5
           echo "--- js-yaml ---"
-          grep "js-yaml@" pnpm-lock.yaml | head -3
+          grep "js-yaml@" pnpm-lock.yaml | head -5
 
       - name: Commit and push regenerated lockfile
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add apps/frontend/pnpm-lock.yaml
+          git add pnpm-lock.yaml
           if git diff --staged --quiet; then
             echo "No changes to commit"
           else
-            git commit -m "chore: regenerate pnpm-lock.yaml [skip ci]"
+            git commit -m "chore: regenerate pnpm-lock.yaml with patched transitive deps [skip ci]"
             git push origin HEAD:${{ github.ref_name }}
           fi
