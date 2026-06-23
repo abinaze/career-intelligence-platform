@@ -22,22 +22,17 @@ jobs:
         with:
           node-version: "24"
 
-      - name: Copy overrides into frontend package.json then regenerate
-        working-directory: apps/frontend
+      - name: Regenerate lockfile
         run: |
           rm -f pnpm-lock.yaml
-          node -e "
-            const fs = require('fs');
-            const root = JSON.parse(fs.readFileSync('../../package.json'));
-            const pkg = JSON.parse(fs.readFileSync('package.json'));
-            pkg.pnpm = root.pnpm;
-            fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n');
-            console.log('Copied overrides:', JSON.stringify(root.pnpm));
-          "
           pnpm install --no-frozen-lockfile
 
+      - name: Verify lock created at root
+        run: |
+          ls -lh pnpm-lock.yaml
+          wc -l pnpm-lock.yaml
+
       - name: Show resolved versions
-        working-directory: apps/frontend
         run: |
           echo "--- next ---"
           grep "next@" pnpm-lock.yaml | head -5
@@ -50,15 +45,14 @@ jobs:
           echo "--- js-yaml ---"
           grep "js-yaml@" pnpm-lock.yaml | head -5
 
-      - name: Commit and push regenerated lockfile
+      - name: Commit and push
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git checkout -- apps/frontend/package.json
-          git add apps/frontend/pnpm-lock.yaml
+          git add pnpm-lock.yaml
           if git diff --staged --quiet; then
             echo "No changes to commit"
           else
-            git commit -m "chore: regenerate pnpm-lock.yaml with patched transitive deps [skip ci]"
+            git commit -m "chore: regenerate pnpm-lock.yaml with patched deps [skip ci]"
             git push origin HEAD:${{ github.ref_name }}
           fi
