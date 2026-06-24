@@ -1,13 +1,13 @@
 """Response schemas for the assessment API."""
 
-from __future__ import annotations
+from __future__ import annotations  # noqa: I001
 
 import uuid
 from datetime import datetime
 
 from pydantic import BaseModel
 
-from src.ai.psychometric_engine.dimensions import DimensionMetadata, PsychometricDimension
+from src.ai.psychometric_engine.dimensions import PsychometricDimension
 
 
 class QuestionSchema(BaseModel):

@@ -1,6 +1,6 @@
 """Career occupation model based on O*NET taxonomy."""
 
-from __future__ import annotations  # noqa: I001
+from __future__ import annotations
 
 from sqlalchemy import Float, Index, String, Text
 from sqlalchemy.dialects.postgresql import JSON

@@ -17,6 +17,10 @@ from src.db.repositories.psychometric import (
     PsychometricScoreRepository,
 )
 from src.db.repositories.user import UserRepository
+from fastapi import HTTPException, status
+from sqlalchemy import select
+
+from src.db.models.profile import UserProfile
 from src.schemas.requests.assessment import StartAssessmentRequest, SubmitAssessmentRequest
 from src.schemas.responses.assessment import (
     AssessmentResultSchema,
@@ -94,14 +98,12 @@ class AssessmentService:
         """Score responses, persist results, return dimension scores."""
         session = await self.session_repo.get_by_id(uuid.UUID(payload.session_id))
         if not session or str(session.user_id) != str(user_id):
-            from fastapi import HTTPException, status
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Assessment session not found",
             )
 
         if session.status != "in_progress":
-            from fastapi import HTTPException, status
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Session is already completed",
@@ -174,7 +176,6 @@ class AssessmentService:
         """Retrieve completed assessment results."""
         session = await self.session_repo.get_by_id(session_id)
         if not session or str(session.user_id) != str(user_id):
-            from fastapi import HTTPException, status
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Assessment session not found",
