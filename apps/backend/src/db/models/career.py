@@ -19,9 +19,7 @@ class Career(Base):
 
     __tablename__ = "careers"
 
-    onet_code: Mapped[str] = mapped_column(
-        String(20), unique=True, nullable=False, index=True
-    )
+    onet_code: Mapped[str] = mapped_column(String(20), unique=True, nullable=False, index=True)
     title: Mapped[str] = mapped_column(String(300), nullable=False, index=True)
     description: Mapped[str] = mapped_column(Text, nullable=False)
 
@@ -38,6 +36,4 @@ class Career(Base):
     # Pre-computed embedding for similarity search (stored as JSON float list)
     embedding: Mapped[list[float] | None] = mapped_column(JSON, nullable=True)
 
-    __table_args__ = (
-        Index("ix_careers_broad_category_title", "broad_category", "title"),
-    )
+    __table_args__ = (Index("ix_careers_broad_category_title", "broad_category", "title"),)

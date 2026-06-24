@@ -15,9 +15,7 @@ class CareerRepository(BaseRepository[Career]):
 
     async def get_by_onet_code(self, onet_code: str) -> Career | None:
         """Fetch a single career by its O*NET occupation code."""
-        result = await self.db.execute(
-            select(Career).where(Career.onet_code == onet_code)
-        )
+        result = await self.db.execute(select(Career).where(Career.onet_code == onet_code))
         return result.scalar_one_or_none()
 
     async def search_by_title(self, query: str, limit: int = 20) -> list[Career]:
@@ -30,9 +28,7 @@ class CareerRepository(BaseRepository[Career]):
         )
         return list(result.scalars().all())
 
-    async def get_by_category(
-        self, broad_category: str, limit: int = 50
-    ) -> list[Career]:
+    async def get_by_category(self, broad_category: str, limit: int = 50) -> list[Career]:
         """Return careers within a broad O*NET category."""
         result = await self.db.execute(
             select(Career)
@@ -42,9 +38,7 @@ class CareerRepository(BaseRepository[Career]):
         )
         return list(result.scalars().all())
 
-    async def get_all_paginated(
-        self, offset: int = 0, limit: int = 100
-    ) -> list[Career]:
+    async def get_all_paginated(self, offset: int = 0, limit: int = 100) -> list[Career]:
         """Return paginated career records ordered by title."""
         result = await self.db.execute(
             select(Career).order_by(Career.title).offset(offset).limit(limit)

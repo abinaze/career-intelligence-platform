@@ -18,6 +18,4 @@ class SubmitAssessmentRequest(BaseModel):
     """Submit responses for a completed assessment session."""
 
     session_id: str = Field(description="UUID of the active assessment session.")
-    responses: dict[str, int] = Field(
-        description="Map of question_id -> Likert response (1-5)."
-    )
+    responses: dict[str, int] = Field(description="Map of question_id -> Likert response (1-5).")
