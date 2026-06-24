@@ -5,7 +5,10 @@ from __future__ import annotations
 import datetime
 import uuid
 
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+
+from fastapi import HTTPException, status
 
 from src.ai.psychometric_engine.dimensions import DIMENSION_METADATA, PsychometricDimension
 from src.ai.psychometric_engine.question_bank import QUESTION_BANK, LikertQuestion
@@ -17,8 +20,6 @@ from src.db.repositories.psychometric import (
     PsychometricScoreRepository,
 )
 from src.db.repositories.user import UserRepository
-from fastapi import HTTPException, status
-from sqlalchemy import select
 
 from src.db.models.profile import UserProfile
 from src.schemas.requests.assessment import StartAssessmentRequest, SubmitAssessmentRequest
@@ -182,7 +183,6 @@ class AssessmentService:
             )
 
         if session.status != "completed" or not session.raw_scores:
-            from fastapi import HTTPException, status
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Assessment not yet completed",
