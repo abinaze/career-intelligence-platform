@@ -1,20 +1,16 @@
-"""
-Import all ORM models so Alembic can discover them for autogenerate.
-When adding a new model, import it here.
-"""
-
-from __future__ import annotations
+"""Database models package."""
 
 from src.db.models.base import Base
+from src.db.models.career import Career
 from src.db.models.profile import AssessmentSession, PsychometricScore, UserProfile
-from src.db.models.user import RefreshToken, User, UserRole
+from src.db.models.user import RefreshToken, User
 
 __all__ = [
     "AssessmentSession",
     "Base",
+    "Career",
     "PsychometricScore",
     "RefreshToken",
     "User",
     "UserProfile",
-    "UserRole",
 ]
