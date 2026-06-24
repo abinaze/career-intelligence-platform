@@ -1,27 +1,24 @@
 """Service layer for psychometric assessment sessions."""
 
-from __future__ import annotations
+from __future__ import annotations  # noqa: I001
 
 import datetime
 import uuid
 
+from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-
-from fastapi import HTTPException, status
 
 from src.ai.psychometric_engine.dimensions import DIMENSION_METADATA, PsychometricDimension
 from src.ai.psychometric_engine.question_bank import QUESTION_BANK, LikertQuestion
 from src.ai.psychometric_engine.scorer import score_responses
 from src.core.logging.setup import get_logger
-from src.db.models.profile import AssessmentSession, PsychometricScore
+from src.db.models.profile import AssessmentSession, PsychometricScore, UserProfile
 from src.db.repositories.psychometric import (
     AssessmentSessionRepository,
     PsychometricScoreRepository,
 )
 from src.db.repositories.user import UserRepository
-
-from src.db.models.profile import UserProfile
 from src.schemas.requests.assessment import StartAssessmentRequest, SubmitAssessmentRequest
 from src.schemas.responses.assessment import (
     AssessmentResultSchema,
