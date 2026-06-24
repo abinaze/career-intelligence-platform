@@ -113,8 +113,6 @@ class AssessmentService:
         scoring_result = score_responses(payload.responses)
 
         # Persist scores — get or create user profile
-        from sqlalchemy import select
-        from src.db.models.profile import UserProfile
 
         profile_result = await self.db.execute(
             select(UserProfile).where(UserProfile.user_id == user_id)
