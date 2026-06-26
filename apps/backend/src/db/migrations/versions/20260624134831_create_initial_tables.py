@@ -7,6 +7,8 @@ Create Date: 2026-06-24T13:48:31.973803+00:00
 
 from __future__ import annotations
 
+import uuid
+
 import sqlalchemy as sa
 from alembic import op
 from sqlalchemy.dialects import postgresql
