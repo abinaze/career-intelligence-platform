@@ -7,8 +7,6 @@ Create Date: 2026-06-24T13:48:31.973803+00:00
 
 from __future__ import annotations
 
-import uuid
-
 import sqlalchemy as sa
 from alembic import op
 from sqlalchemy.dialects import postgresql
@@ -94,6 +92,7 @@ def upgrade() -> None:
         sa.Column("location", sa.String(255), nullable=True),
         sa.Column("years_of_experience", sa.Integer(), nullable=True),
         sa.Column("education_level", sa.String(100), nullable=True),
+        sa.Column("age_range", sa.String(50), nullable=True),
         sa.Column("current_role", sa.String(255), nullable=True),
         sa.Column("target_roles", postgresql.JSON(), nullable=True),
         sa.Column("skills", postgresql.JSON(), nullable=True),
