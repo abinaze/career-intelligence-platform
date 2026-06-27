@@ -5,7 +5,7 @@ Revises:
 Create Date: 2026-06-24T13:48:31.973803+00:00
 """
 
-from __future__ import annotations
+from __future__ import annotations  # noqa: I001
 
 import uuid
 
@@ -215,9 +215,7 @@ def upgrade() -> None:
     op.create_index("ix_careers_onet_code", "careers", ["onet_code"], unique=True)
     op.create_index("ix_careers_title", "careers", ["title"])
     op.create_index("ix_careers_broad_category", "careers", ["broad_category"])
-    op.create_index(
-        "ix_careers_broad_category_title", "careers", ["broad_category", "title"]
-    )
+    op.create_index("ix_careers_broad_category_title", "careers", ["broad_category", "title"])
 
 
 def downgrade() -> None:
