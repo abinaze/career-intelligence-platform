@@ -108,7 +108,7 @@ def explain(
     factors: list[FactorExplanation] = [
         FactorExplanation(
             factor="semantic_match",
-            label="Profile–career semantic similarity",
+            label="Profile-career semantic similarity",
             score=ranked.similarity_score,
             driver=_driver_label(ranked.similarity_score),
             detail=(

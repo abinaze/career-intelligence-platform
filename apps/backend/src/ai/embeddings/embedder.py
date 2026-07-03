@@ -26,7 +26,7 @@ _model: Any = None
 
 def _load_model() -> Any:
     """Load and cache the sentence-transformer model (thread-safe)."""
-    global _model  # noqa: PLW0603
+    global _model
     if _model is not None:
         return _model
     with _MODEL_LOCK:
@@ -41,7 +41,7 @@ def _load_model() -> Any:
                 cache_folder=_settings.MODEL_CACHE_DIR,
             )
             logger.info("Embedding model ready", dim=_settings.EMBEDDING_DIMENSION)
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.warning(
                 "sentence-transformers unavailable — using fallback embedder",
                 error=str(exc),

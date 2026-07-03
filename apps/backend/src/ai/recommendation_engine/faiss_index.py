@@ -11,9 +11,9 @@ once on startup (or on demand) and queried per request.
 
 from __future__ import annotations
 
-import threading
 from dataclasses import dataclass
 from pathlib import Path
+import threading
 from typing import Any
 
 import numpy as np
@@ -145,7 +145,7 @@ class CareerFaissIndex:
                         )
                     )
                 return results
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 logger.error("FAISS search failed", error=str(exc))
                 return []
 
@@ -163,7 +163,7 @@ class CareerFaissIndex:
                     return
                 faiss.write_index(self._index, str(index_path))
             logger.info("FAISS index saved", path=str(index_path))
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.error("Failed to save FAISS index", error=str(exc))
 
     def load(self, path: str | None = None) -> bool:
@@ -179,7 +179,7 @@ class CareerFaissIndex:
                 self._index = index
             logger.info("FAISS index loaded from disk", path=str(index_path))
             return True
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.warning("Could not load FAISS index", error=str(exc))
             return False
 

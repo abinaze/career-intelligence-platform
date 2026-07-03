@@ -4,15 +4,15 @@ Career Intelligence Platform — FastAPI Application Entry Point.
 
 from __future__ import annotations
 
-import uuid
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
+import uuid
 
-import structlog
 from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import JSONResponse
+import structlog
 
 from src.api.v1.endpoints.assessment import router as assessment_router
 from src.api.v1.endpoints.auth import router as auth_router

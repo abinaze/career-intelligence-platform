@@ -13,8 +13,8 @@ Orchestrates the full recommendation pipeline:
 
 from __future__ import annotations
 
-import uuid
 from dataclasses import dataclass, field
+import uuid
 
 from fastapi import HTTPException, status
 from sqlalchemy import select
