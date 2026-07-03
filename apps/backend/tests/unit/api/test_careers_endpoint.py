@@ -6,6 +6,7 @@ from typing import Any
 import uuid
 
 from httpx import AsyncClient
+import pytest
 
 
 def unique_user() -> dict[str, Any]:
@@ -17,8 +18,9 @@ def unique_user() -> dict[str, Any]:
     }
 
 
-async def register_and_token(client: AsyncClient) -> str:
-    """Register a new user and return their access token."""
+@pytest.fixture
+async def auth_token(client: AsyncClient) -> str:
+    """Register a fresh user and return their access token."""
     user = unique_user()
     resp = await client.post("/api/v1/auth/register", json=user)
     assert resp.status_code == 201
@@ -26,19 +28,19 @@ async def register_and_token(client: AsyncClient) -> str:
 
 
 class TestProfileEndpoints:
-    async def test_get_profile_creates_blank_if_missing(self, client: AsyncClient) -> None:
-        token = await register_and_token(client)
+    async def test_get_profile_creates_blank_if_missing(
+        self, client: AsyncClient, auth_token: str
+    ) -> None:
         resp = await client.get(
             "/api/v1/profile",
-            headers={"Authorization": f"Bearer {token}"},
+            headers={"Authorization": f"Bearer {auth_token}"},
         )
         assert resp.status_code == 200
         data = resp.json()
         assert data["onboarding_completed"] is False
         assert data["completeness_score"] == 0.0
 
-    async def test_patch_profile_updates_fields(self, client: AsyncClient) -> None:
-        token = await register_and_token(client)
+    async def test_patch_profile_updates_fields(self, client: AsyncClient, auth_token: str) -> None:
         resp = await client.patch(
             "/api/v1/profile",
             json={
@@ -47,7 +49,7 @@ class TestProfileEndpoints:
                 "primary_goal": "Become a software architect",
                 "country": "India",
             },
-            headers={"Authorization": f"Bearer {token}"},
+            headers={"Authorization": f"Bearer {auth_token}"},
         )
         assert resp.status_code == 200
         data = resp.json()
@@ -55,8 +57,9 @@ class TestProfileEndpoints:
         assert data["current_field"] == "Technology"
         assert data["country"] == "India"
 
-    async def test_patch_profile_increases_completeness(self, client: AsyncClient) -> None:
-        token = await register_and_token(client)
+    async def test_patch_profile_increases_completeness(
+        self, client: AsyncClient, auth_token: str
+    ) -> None:
         resp = await client.patch(
             "/api/v1/profile",
             json={
@@ -66,17 +69,18 @@ class TestProfileEndpoints:
                 "country": "US",
                 "years_of_experience": 5,
             },
-            headers={"Authorization": f"Bearer {token}"},
+            headers={"Authorization": f"Bearer {auth_token}"},
         )
         assert resp.status_code == 200
         assert resp.json()["completeness_score"] > 0.0
 
-    async def test_patch_profile_rejects_invalid_experience(self, client: AsyncClient) -> None:
-        token = await register_and_token(client)
+    async def test_patch_profile_rejects_invalid_experience(
+        self, client: AsyncClient, auth_token: str
+    ) -> None:
         resp = await client.patch(
             "/api/v1/profile",
             json={"years_of_experience": -5},
-            headers={"Authorization": f"Bearer {token}"},
+            headers={"Authorization": f"Bearer {auth_token}"},
         )
         assert resp.status_code == 422
 
@@ -95,28 +99,29 @@ class TestCareersEndpoints:
         assert resp.status_code in (401, 403)
 
     async def test_recommendations_without_assessment_returns_400(
-        self, client: AsyncClient
+        self, client: AsyncClient, auth_token: str
     ) -> None:
-        token = await register_and_token(client)
         resp = await client.get(
             "/api/v1/careers/recommendations",
-            headers={"Authorization": f"Bearer {token}"},
+            headers={"Authorization": f"Bearer {auth_token}"},
         )
-        # Either 400 (no assessment) or 404 (no profile) — both correct before onboarding
+        # 400 (no assessment) or 404 (no profile) — both valid before onboarding
         assert resp.status_code in (400, 404)
 
-    async def test_recommendations_top_k_param_validates(self, client: AsyncClient) -> None:
-        token = await register_and_token(client)
+    async def test_recommendations_top_k_param_validates(
+        self, client: AsyncClient, auth_token: str
+    ) -> None:
         resp = await client.get(
             "/api/v1/careers/recommendations?top_k=200",
-            headers={"Authorization": f"Bearer {token}"},
+            headers={"Authorization": f"Bearer {auth_token}"},
         )
         assert resp.status_code == 422
 
-    async def test_recommendations_top_k_zero_validates(self, client: AsyncClient) -> None:
-        token = await register_and_token(client)
+    async def test_recommendations_top_k_zero_validates(
+        self, client: AsyncClient, auth_token: str
+    ) -> None:
         resp = await client.get(
             "/api/v1/careers/recommendations?top_k=0",
-            headers={"Authorization": f"Bearer {token}"},
+            headers={"Authorization": f"Bearer {auth_token}"},
         )
         assert resp.status_code == 422
