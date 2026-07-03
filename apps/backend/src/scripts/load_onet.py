@@ -59,7 +59,8 @@ ONET_CAREERS: list[dict] = [
         "title": "Registered Nurses",
         "description": (
             "Assess patient health problems and needs, develop and implement nursing care plans, "
-            "and maintain medical records. Administer nursing care to ill, injured, or disabled patients."
+            "and maintain medical records. Administer nursing care to ill, injured, "
+            "or disabled patients."
         ),
         "broad_category": "Healthcare Practitioners and Technical",
         "median_salary_usd": 81_220.0,
@@ -78,7 +79,8 @@ ONET_CAREERS: list[dict] = [
         "title": "General and Operations Managers",
         "description": (
             "Plan, direct, or coordinate the operations of public or private sector organisations. "
-            "Duties include formulating policies, managing daily operations, and planning the use of "
+            "Duties include formulating policies, managing daily operations, "
+            "and planning the use of "
             "materials and human resources."
         ),
         "broad_category": "Management",
