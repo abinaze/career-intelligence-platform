@@ -2,12 +2,9 @@
 
 from __future__ import annotations
 
-import pytest
-
 from src.ai.embeddings.embedder import _fallback_embedding, build_profile_text, embed_text
-from src.ai.recommendation_engine.ranker import RankInput, rank_candidates
 from src.ai.explainability.explainer import _confidence_band, _driver_label, explain
-from src.ai.recommendation_engine.ranker import RankedCareer
+from src.ai.recommendation_engine.ranker import RankedCareer, RankInput, rank_candidates
 
 
 class TestEmbedder:
