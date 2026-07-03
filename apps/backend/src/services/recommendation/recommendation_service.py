@@ -33,8 +33,8 @@ from src.db.repositories.user import UserRepository
 
 logger = get_logger(__name__)
 
-_DEFAULT_FAISS_TOP_K = 20   # candidates fetched from FAISS before re-ranking
-_DEFAULT_RETURN = 10        # final recommendations returned to client
+_DEFAULT_FAISS_TOP_K = 20  # candidates fetched from FAISS before re-ranking
+_DEFAULT_RETURN = 10  # final recommendations returned to client
 
 
 @dataclass
@@ -192,9 +192,7 @@ class RecommendationService:
         )
 
     async def _fetch_careers_by_onet(self, onet_codes: list[str]) -> list[Career]:
-        result = await self.db.execute(
-            select(Career).where(Career.onet_code.in_(onet_codes))
-        )
+        result = await self.db.execute(select(Career).where(Career.onet_code.in_(onet_codes)))
         return list(result.scalars().all())
 
     async def _rebuild_index(self) -> None:

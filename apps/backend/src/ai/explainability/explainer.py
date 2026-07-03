@@ -35,7 +35,7 @@ class FactorExplanation:
     factor: str
     label: str
     score: float
-    driver: str    # "strong match" | "moderate match" | "partial match" | "weak match"
+    driver: str  # "strong match" | "moderate match" | "partial match" | "weak match"
     detail: str
 
 
@@ -47,7 +47,7 @@ class CareerExplanation:
     onet_code: str
     title: str
     summary: str
-    confidence_band: str    # "high" | "medium" | "low"
+    confidence_band: str  # "high" | "medium" | "low"
     factors: list[FactorExplanation] = field(default_factory=list)
     top_matching_traits: list[str] = field(default_factory=list)
 

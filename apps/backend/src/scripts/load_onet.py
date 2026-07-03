@@ -246,8 +246,7 @@ async def load_careers(session: AsyncSession) -> int:
 
         # Build a description string for embedding
         embed_text_str = (
-            f"{data['title']}. {data['description']} "
-            f"Category: {data['broad_category']}."
+            f"{data['title']}. {data['description']} Category: {data['broad_category']}."
         )
         embedding = embed_text(embed_text_str)
 

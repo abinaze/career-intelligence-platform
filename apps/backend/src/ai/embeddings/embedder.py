@@ -57,9 +57,9 @@ def _fallback_embedding(text: str) -> list[float]:
     """
     dim = _settings.EMBEDDING_DIMENSION
     digest = hashlib.sha256(text.encode()).digest()
-    raw = np.frombuffer(
-        (digest * ((dim // len(digest)) + 1))[:dim], dtype=np.uint8
-    ).astype(np.float32)
+    raw = np.frombuffer((digest * ((dim // len(digest)) + 1))[:dim], dtype=np.uint8).astype(
+        np.float32
+    )
     raw = raw / 255.0 - 0.5
     norm = np.linalg.norm(raw)
     if norm > 0:
@@ -74,9 +74,7 @@ def embed_text(text: str) -> list[float]:
     model = _load_model()
     if model is None:
         return _fallback_embedding(text)
-    vector: np.ndarray = model.encode(
-        text, normalize_embeddings=True, show_progress_bar=False
-    )
+    vector: np.ndarray = model.encode(text, normalize_embeddings=True, show_progress_bar=False)
     return vector.tolist()
 
 

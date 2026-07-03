@@ -59,9 +59,7 @@ class ProfileService:
 
     async def get_profile(self, user_id: uuid.UUID) -> UserProfile:
         """Return the user's profile, raising 404 if not found."""
-        result = await self.db.execute(
-            select(UserProfile).where(UserProfile.user_id == user_id)
-        )
+        result = await self.db.execute(select(UserProfile).where(UserProfile.user_id == user_id))
         profile = result.scalar_one_or_none()
         if profile is None:
             raise HTTPException(
@@ -72,9 +70,7 @@ class ProfileService:
 
     async def get_or_create_profile(self, user_id: uuid.UUID) -> UserProfile:
         """Return existing profile or create a blank one."""
-        result = await self.db.execute(
-            select(UserProfile).where(UserProfile.user_id == user_id)
-        )
+        result = await self.db.execute(select(UserProfile).where(UserProfile.user_id == user_id))
         profile = result.scalar_one_or_none()
         if profile is None:
             profile = UserProfile(
