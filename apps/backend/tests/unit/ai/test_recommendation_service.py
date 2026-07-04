@@ -64,6 +64,9 @@ class TestEmbedder:
         assert len(text) > 0
 
 
+_RANKER_DEFAULT_INTERESTS: dict = {"Investigative": 85, "Realistic": 40}
+
+
 class TestRanker:
     def _make_candidate(
         self,
@@ -72,14 +75,15 @@ class TestRanker:
         similarity: float = 0.8,
         salary: float | None = 100_000.0,
         outlook: float | None = 80.0,
-        interests: dict | None = None,
+        interests: dict | None | str = "default",
     ) -> RankInput:
+        resolved = _RANKER_DEFAULT_INTERESTS if interests == "default" else interests
         return RankInput(
             onet_code=onet_code,
             career_id=f"id-{onet_code}",
             title=title,
             similarity_score=similarity,
-            interests=interests or {"Investigative": 85, "Realistic": 40},
+            interests=resolved,
             median_salary_usd=salary,
             outlook_percentile=outlook,
         )
