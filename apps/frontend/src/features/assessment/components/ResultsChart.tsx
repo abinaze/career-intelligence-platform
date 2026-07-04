@@ -61,8 +61,8 @@ export function ResultsChart({ scores }: ResultsChartProps) {
             strokeWidth={2}
           />
           <Tooltip
-            formatter={(value: number | string | undefined) => [
-              value !== undefined ? `${Math.round(Number(value))}/100` : "",
+            formatter={(value) => [
+              `${Math.round(Number(value))}/100`,
               "",
             ]}
             contentStyle={{
