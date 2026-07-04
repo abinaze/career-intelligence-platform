@@ -2,20 +2,22 @@
 Career Intelligence Platform — FastAPI Application Entry Point.
 """
 
-from __future__ import annotations  # noqa: I001
+from __future__ import annotations
 
-import uuid
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
+import uuid
 
-import structlog
 from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import JSONResponse
+import structlog
 
 from src.api.v1.endpoints.assessment import router as assessment_router
 from src.api.v1.endpoints.auth import router as auth_router
+from src.api.v1.endpoints.careers import router as careers_router
+from src.api.v1.endpoints.profile import router as profile_router
 from src.core.config.settings import get_settings
 from src.core.logging.setup import configure_logging, get_logger
 from src.db.engine import check_database_connection
@@ -37,6 +39,13 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         logger.error("Database connection failed — check DATABASE_URL")
     else:
         logger.info("Database connection verified")
+
+    # Attempt to load the FAISS index from disk on startup
+    from src.ai.recommendation_engine.faiss_index import career_index
+
+    if not career_index.load():
+        logger.info("No pre-built FAISS index found — will build on first request")
+
     logger.info("Application startup complete")
     yield
     logger.info("Shutting down Career Intelligence Platform")
@@ -88,15 +97,21 @@ def create_application() -> FastAPI:
 
     app.include_router(auth_router, prefix=_settings.API_V1_PREFIX)
     app.include_router(assessment_router, prefix=_settings.API_V1_PREFIX)
+    app.include_router(careers_router, prefix=_settings.API_V1_PREFIX)
+    app.include_router(profile_router, prefix=_settings.API_V1_PREFIX)
 
     @app.get("/health", tags=["Health"], include_in_schema=False)
     async def health_check() -> dict[str, str]:
+        from src.ai.recommendation_engine.faiss_index import career_index as ci
+
         db_status = "ok" if await check_database_connection() else "degraded"
         return {
             "status": "ok",
             "version": _settings.APP_VERSION,
             "environment": _settings.ENVIRONMENT,
             "database": db_status,
+            "faiss_index": "ready" if ci.is_ready else "not_built",
+            "faiss_careers": str(ci.size),
         }
 
     @app.get("/", tags=["Root"], include_in_schema=False)
