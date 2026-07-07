@@ -24,7 +24,7 @@ export function StatCard({
     <div
       className={cn(
         "rounded-xl border bg-card p-6 shadow-sm transition-shadow",
-        href && "hover:shadow-md cursor-pointer",
+        href && "cursor-pointer hover:shadow-md",
         accent && "border-primary/30 bg-primary/5",
       )}
     >
@@ -32,12 +32,7 @@ export function StatCard({
       {loading ? (
         <div className="mt-2 h-8 w-24 animate-pulse rounded bg-secondary" />
       ) : (
-        <p
-          className={cn(
-            "mt-2 text-2xl font-bold",
-            accent && "text-primary",
-          )}
-        >
+        <p className={cn("mt-2 text-2xl font-bold", accent && "text-primary")}>
           {value}
         </p>
       )}
@@ -45,8 +40,6 @@ export function StatCard({
     </div>
   );
 
-  if (href) {
-    return <Link href={href}>{inner}</Link>;
-  }
+  if (href) return <Link href={href}>{inner}</Link>;
   return inner;
 }

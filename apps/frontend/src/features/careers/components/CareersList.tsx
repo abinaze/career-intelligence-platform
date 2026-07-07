@@ -1,14 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { Briefcase, AlertCircle, Loader2 } from "lucide-react";
+import { AlertCircle, Briefcase, Loader2 } from "lucide-react";
 import { useRecommendations } from "../hooks/useCareers";
 import { CareerCard } from "./CareerCard";
 
 export function CareersList() {
   const { data, isLoading, error } = useRecommendations(10);
 
-  // ── Loading ───────────────────────────────────────────────────────────────
   if (isLoading) {
     return (
       <div className="flex flex-col items-center justify-center rounded-xl border bg-card py-20 text-center shadow-sm">
@@ -20,7 +19,6 @@ export function CareersList() {
     );
   }
 
-  // ── Error: no assessment yet ──────────────────────────────────────────────
   if (error) {
     return (
       <div className="flex flex-col items-center justify-center rounded-xl border bg-card py-20 text-center shadow-sm">
@@ -42,7 +40,6 @@ export function CareersList() {
     );
   }
 
-  // ── Warning: career DB empty ──────────────────────────────────────────────
   if (data?.warning) {
     return (
       <div className="flex flex-col items-center justify-center rounded-xl border bg-card py-20 text-center shadow-sm">
@@ -55,7 +52,6 @@ export function CareersList() {
     );
   }
 
-  // ── Empty ─────────────────────────────────────────────────────────────────
   if (!data?.recommendations.length) {
     return (
       <div className="flex flex-col items-center justify-center rounded-xl border bg-card py-20 text-center shadow-sm">
@@ -68,22 +64,20 @@ export function CareersList() {
     );
   }
 
-  // ── Results ───────────────────────────────────────────────────────────────
   return (
     <div className="space-y-4">
-      {/* Profile completeness banner */}
       {data.profile_completeness < 60 && (
         <div className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4 dark:border-amber-900 dark:bg-amber-950/40">
           <AlertCircle className="mt-0.5 h-4 w-4 flex-shrink-0 text-amber-600 dark:text-amber-400" />
           <p className="text-sm text-amber-800 dark:text-amber-300">
             Your profile is{" "}
-            <strong>{Math.round(data.profile_completeness)}% complete</strong>.
-            Add more details to improve recommendation accuracy.
+            <strong>
+              {Math.round(data.profile_completeness)}% complete
+            </strong>
+            . Add more details to improve recommendation accuracy.
           </p>
         </div>
       )}
-
-      {/* Career cards */}
       {data.recommendations.map((rec, i) => (
         <CareerCard key={rec.career_id} recommendation={rec} rank={i + 1} />
       ))}

@@ -16,7 +16,6 @@ export function DashboardOverview() {
     warning,
   } = useDashboard();
 
-  // ── Stat cards data ────────────────────────────────────────────────────────
   const assessmentValue =
     assessmentStatus === "completed"
       ? "Completed"
@@ -48,8 +47,7 @@ export function DashboardOverview() {
         : "Complete your profile to get started";
 
   return (
-    <div className="space-y-8">
-      {/* Stat cards */}
+    <div className="space-y-6">
       <div className="grid gap-4 md:grid-cols-3">
         <StatCard
           label="Assessment"
@@ -75,7 +73,6 @@ export function DashboardOverview() {
         />
       </div>
 
-      {/* CTA section — shown when assessment not done */}
       {!isLoading && assessmentStatus === "not_started" && (
         <div className="flex flex-col items-start gap-4 rounded-xl border bg-card p-6 shadow-sm sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-4">
@@ -99,7 +96,6 @@ export function DashboardOverview() {
         </div>
       )}
 
-      {/* Top career highlight — shown when recommendations exist */}
       {!isLoading && topCareerTitle && topCareerScore !== null && (
         <div className="rounded-xl border bg-card p-6 shadow-sm">
           <div className="mb-4 flex items-center gap-2">
@@ -123,7 +119,6 @@ export function DashboardOverview() {
               <ArrowRight className="h-3.5 w-3.5" />
             </Link>
           </div>
-          {/* Score bar */}
           <div className="mt-4 h-2 w-full overflow-hidden rounded-full bg-secondary">
             <div
               className="h-full rounded-full bg-primary transition-all duration-700"
@@ -133,7 +128,6 @@ export function DashboardOverview() {
         </div>
       )}
 
-      {/* Profile completeness nudge */}
       {!isLoading && profileCompleteness < 60 && (
         <div className="flex items-center gap-4 rounded-xl border bg-card p-5 shadow-sm">
           <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-secondary">
@@ -147,7 +141,6 @@ export function DashboardOverview() {
               A fuller profile improves recommendation accuracy
             </p>
           </div>
-          {/* Mini progress bar */}
           <div className="w-24">
             <div className="h-1.5 w-full overflow-hidden rounded-full bg-secondary">
               <div
@@ -159,7 +152,6 @@ export function DashboardOverview() {
         </div>
       )}
 
-      {/* Warning: career DB empty */}
       {warning && (
         <p className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-300">
           {warning}

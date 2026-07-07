@@ -13,27 +13,15 @@ export const PROFILE_KEYS = {
   detail: () => [...PROFILE_KEYS.all, "detail"] as const,
 };
 
-// ── Recommendations ───────────────────────────────────────────────────────────
-
-/**
- * Fetch career recommendations.
- * Disabled automatically when the user has no completed assessment —
- * the error is surfaced via `error.response.status === 400`.
- */
 export function useRecommendations(topK = 10) {
   return useQuery({
     queryKey: CAREERS_KEYS.recommendations(topK),
     queryFn: () => careersApi.getRecommendations(topK),
-    staleTime: 10 * 60 * 1000, // 10 min — recommendations don't change often
+    staleTime: 10 * 60 * 1000,
     retry: false,
   });
 }
 
-// ── Profile ───────────────────────────────────────────────────────────────────
-
-/**
- * Fetch the authenticated user's profile.
- */
 export function useProfile() {
   return useQuery({
     queryKey: PROFILE_KEYS.detail(),
@@ -42,13 +30,8 @@ export function useProfile() {
   });
 }
 
-/**
- * Mutation: update profile fields.
- * Optimistically invalidates profile and recommendations caches.
- */
 export function useUpdateProfile() {
   const queryClient = useQueryClient();
-
   return useMutation({
     mutationFn: (updates: ProfileUpdate) => profileApi.updateProfile(updates),
     onSuccess: () => {

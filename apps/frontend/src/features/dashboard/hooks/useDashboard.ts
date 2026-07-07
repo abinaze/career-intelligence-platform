@@ -1,18 +1,23 @@
-import { useProfile, useRecommendations } from "@/features/careers/hooks/useCareers";
 import { useLatestResults } from "@/features/assessment/hooks/useAssessment";
+import {
+  useProfile,
+  useRecommendations,
+} from "@/features/careers/hooks/useCareers";
 
 /**
- * Aggregates data from three backend sources into one dashboard-ready shape.
- * Any individual query failing is handled gracefully — the dashboard
- * degrades to placeholder values rather than throwing.
+ * Aggregates profile, assessment results, and top recommendation
+ * into a single dashboard-ready object. Any individual query
+ * failing degrades gracefully to placeholder values.
  */
 export function useDashboard() {
   const profile = useProfile();
   const latestResults = useLatestResults();
-  const recommendations = useRecommendations(1); // only need the top match
+  const recommendations = useRecommendations(1);
 
   const isLoading =
-    profile.isLoading || latestResults.isLoading || recommendations.isLoading;
+    profile.isLoading ||
+    latestResults.isLoading ||
+    recommendations.isLoading;
 
   const assessmentStatus = latestResults.data
     ? "completed"
@@ -28,7 +33,9 @@ export function useDashboard() {
     profileCompleteness: profile.data?.completeness_score ?? 0,
     careerMatchCount: recommendations.data?.recommendations.length ?? 0,
     topCareerTitle: topRec?.title ?? null,
-    topCareerScore: topRec ? Math.round(topRec.composite_score * 100) : null,
+    topCareerScore: topRec
+      ? Math.round(topRec.composite_score * 100)
+      : null,
     warning: recommendations.data?.warning ?? null,
   };
 }
