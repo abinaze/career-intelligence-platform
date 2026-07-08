@@ -8,7 +8,7 @@ export const profileSchema = z.object({
     .max(200, "Field must be less than 200 characters")
     .optional(),
   years_of_experience: z
-    .number({ invalid_type_error: "Must be a number" })
+    .number({ error: "Must be a number" })
     .int()
     .min(0, "Must be 0 or more")
     .max(60, "Must be 60 or less")
