@@ -17,6 +17,7 @@ import structlog
 from src.api.v1.endpoints.assessment import router as assessment_router
 from src.api.v1.endpoints.auth import router as auth_router
 from src.api.v1.endpoints.careers import router as careers_router
+from src.api.v1.endpoints.chat import router as chat_router
 from src.api.v1.endpoints.profile import router as profile_router
 from src.core.config.settings import get_settings
 from src.core.logging.setup import configure_logging, get_logger
@@ -40,11 +41,15 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     else:
         logger.info("Database connection verified")
 
-    # Attempt to load the FAISS index from disk on startup
     from src.ai.recommendation_engine.faiss_index import career_index
 
     if not career_index.load():
         logger.info("No pre-built FAISS index found — will build on first request")
+
+    if _settings.ANTHROPIC_API_KEY:
+        logger.info("Chat service enabled", model="claude-sonnet-4-6")
+    else:
+        logger.warning("Chat service disabled — set ANTHROPIC_API_KEY to enable")
 
     logger.info("Application startup complete")
     yield
@@ -72,9 +77,7 @@ def create_application() -> FastAPI:
     app.add_middleware(GZipMiddleware, minimum_size=1000)
 
     @app.middleware("http")
-    async def add_request_id(  # type: ignore[no-untyped-def]
-        request: Request, call_next
-    ):
+    async def add_request_id(request: Request, call_next):  # type: ignore[no-untyped-def]
         request_id = str(uuid.uuid4())
         with structlog.contextvars.bound_contextvars(request_id=request_id):
             response = await call_next(request)
@@ -99,6 +102,7 @@ def create_application() -> FastAPI:
     app.include_router(assessment_router, prefix=_settings.API_V1_PREFIX)
     app.include_router(careers_router, prefix=_settings.API_V1_PREFIX)
     app.include_router(profile_router, prefix=_settings.API_V1_PREFIX)
+    app.include_router(chat_router, prefix=_settings.API_V1_PREFIX)
 
     @app.get("/health", tags=["Health"], include_in_schema=False)
     async def health_check() -> dict[str, str]:
@@ -112,6 +116,7 @@ def create_application() -> FastAPI:
             "database": db_status,
             "faiss_index": "ready" if ci.is_ready else "not_built",
             "faiss_careers": str(ci.size),
+            "chat": "enabled" if _settings.ANTHROPIC_API_KEY else "disabled",
         }
 
     @app.get("/", tags=["Root"], include_in_schema=False)

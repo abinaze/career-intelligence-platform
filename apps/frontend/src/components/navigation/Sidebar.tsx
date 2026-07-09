@@ -6,6 +6,7 @@ import {
   LayoutDashboard,
   ClipboardList,
   Briefcase,
+  MessageSquare,
   Settings,
   LogOut,
 } from "lucide-react";
@@ -16,6 +17,7 @@ const NAV_ITEMS = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/assessment", label: "Assessment", icon: ClipboardList },
   { href: "/careers", label: "Careers", icon: Briefcase },
+  { href: "/chat", label: "Chat", icon: MessageSquare },
   { href: "/settings", label: "Settings", icon: Settings },
 ];
 

@@ -90,6 +90,9 @@ class Settings(BaseSettings):
     FAISS_INDEX_PATH: str = "data/faiss/career_index.faiss"
     MODEL_CACHE_DIR: str = ".model_cache"
 
+    # ── Chat / LLM ────────────────────────────────────────────────────────────
+    ANTHROPIC_API_KEY: str | None = None
+
     # ── Background Jobs ───────────────────────────────────────────────────────
     CELERY_BROKER_URL: str = "redis://localhost:6379/1"
     CELERY_RESULT_BACKEND: str = "redis://localhost:6379/2"
