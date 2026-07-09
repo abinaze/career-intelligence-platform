@@ -4,15 +4,15 @@ Career Intelligence Platform — FastAPI Application Entry Point.
 
 from __future__ import annotations
 
-import uuid
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
+import uuid
 
-import structlog
 from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import JSONResponse
+import structlog
 
 from src.api.v1.endpoints.assessment import router as assessment_router
 from src.api.v1.endpoints.auth import router as auth_router
@@ -49,9 +49,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     if _settings.ANTHROPIC_API_KEY:
         logger.info("Chat service enabled", model="claude-sonnet-4-6")
     else:
-        logger.warning(
-            "Chat service disabled — set ANTHROPIC_API_KEY to enable"
-        )
+        logger.warning("Chat service disabled — set ANTHROPIC_API_KEY to enable")
 
     logger.info("Application startup complete")
     yield

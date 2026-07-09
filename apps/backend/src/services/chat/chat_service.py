@@ -13,10 +13,11 @@ from __future__ import annotations
 
 import uuid
 
-import httpx
 from fastapi import HTTPException, status
+import httpx
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+
 from src.core.config.settings import get_settings
 from src.core.logging.setup import get_logger
 from src.db.models.profile import UserProfile
