@@ -17,12 +17,12 @@ import httpx
 from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-
 from src.core.config.settings import get_settings
 from src.core.logging.setup import get_logger
 from src.db.models.profile import UserProfile
 from src.db.repositories.psychometric import PsychometricScoreRepository
-from src.schemas.requests.chat import ChatMessage, ChatRequest, ChatResponse
+from src.schemas.requests.chat import ChatRequest
+from src.schemas.responses.chat import ChatResponse
 
 logger = get_logger(__name__)
 _settings = get_settings()
@@ -61,7 +61,7 @@ def _build_system_prompt(
 
     if score_map:
         lines.append("")
-        lines.append("## Psychometric scores (0–100)")
+        lines.append("## Psychometric scores (0-100)")
         top = sorted(score_map.items(), key=lambda x: x[1], reverse=True)
         for dim, score in top:
             lines.append(f"- {dim.replace('_', ' ').title()}: {score:.0f}/100")
