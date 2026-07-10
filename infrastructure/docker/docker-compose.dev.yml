@@ -11,6 +11,8 @@ volumes:
     driver: local
   redis_data:
     driver: local
+  faiss_data:
+    driver: local
 
 services:
   # ── PostgreSQL 16 ──────────────────────────────────────────────────────────
@@ -58,3 +60,65 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+
+  # ── Backend (FastAPI) ───────────────────────────────────────────────────────
+  # Only started with `make docker-up` (--profile full).
+  # For everyday development, run the backend on the host with
+  # `uv run uvicorn src.main:app --reload` against these same containers.
+  backend:
+    build:
+      context: .
+      dockerfile: infrastructure/docker/Dockerfile.backend
+      target: development
+    container_name: cip-backend
+    restart: unless-stopped
+    profiles: ["full"]
+    env_file:
+      - apps/backend/.env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://cip_user:cip_password@postgres:5432/cip_db
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/1
+      CELERY_RESULT_BACKEND: redis://redis:6379/2
+    volumes:
+      - ./apps/backend:/app/apps/backend
+      - faiss_data:/app/apps/backend/data/faiss
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - cip-network
+    healthcheck:
+      test: ["CMD", "python", "-c", "import httpx; httpx.get('http://localhost:8000/health').raise_for_status()"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 20s
+
+  # ── Frontend (Next.js) ───────────────────────────────────────────────────────
+  # Only started with `make docker-up` (--profile full).
+  frontend:
+    build:
+      context: .
+      dockerfile: infrastructure/docker/Dockerfile.frontend
+      target: development
+    container_name: cip-frontend
+    restart: unless-stopped
+    profiles: ["full"]
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:8000
+      NEXT_PUBLIC_APP_URL: http://localhost:3000
+    volumes:
+      - ./apps/frontend:/app/apps/frontend
+      - /app/apps/frontend/node_modules
+      - /app/apps/frontend/.next
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    networks:
+      - cip-network
