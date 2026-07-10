@@ -1,6 +1,9 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // Required for the production Docker image (infrastructure/docker/Dockerfile.frontend).
+  // Produces a minimal self-contained server in .next/standalone.
+  output: "standalone",
   experimental: {
     optimizePackageImports: [
       "lucide-react",
