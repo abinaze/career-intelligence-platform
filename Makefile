@@ -1,4 +1,4 @@
-.PHONY: help setup dev-up dev-down dev-logs build lint format type-check test test-backend test-frontend migrate migrate-create clean seed-db load-onet
+.PHONY: help setup dev-up dev-down dev-logs build lint format type-check test test-backend test-frontend migrate migrate-create clean seed-db load-onet docker-build docker-up docker-down docker-logs
 
 help: ## Show available commands
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
@@ -13,13 +13,25 @@ setup: ## Install all dependencies
 	pnpm husky
 	@echo "✓ Setup complete"
 
-dev-up: ## Start all Docker services
+dev-up: ## Start Postgres + Redis only (run backend/frontend locally)
 	docker compose -f infrastructure/docker/docker-compose.dev.yml up -d
 
-dev-down: ## Stop all Docker services
+dev-down: ## Stop Postgres + Redis
 	docker compose -f infrastructure/docker/docker-compose.dev.yml down
 
-dev-logs: ## Tail Docker service logs
+dev-logs: ## Tail Postgres + Redis logs
+	docker compose -f infrastructure/docker/docker-compose.dev.yml logs -f
+
+docker-build: ## Build all app containers (backend, frontend, postgres, redis)
+	docker compose -f infrastructure/docker/docker-compose.dev.yml build
+
+docker-up: ## Start the full stack in containers (backend + frontend + db + redis)
+	docker compose -f infrastructure/docker/docker-compose.dev.yml --profile full up -d
+
+docker-down: ## Stop the full containerised stack
+	docker compose -f infrastructure/docker/docker-compose.dev.yml --profile full down
+
+docker-logs: ## Tail all container logs
 	docker compose -f infrastructure/docker/docker-compose.dev.yml logs -f
 
 build: ## Build all applications
@@ -65,5 +77,5 @@ clean: ## Clean build artifacts
 seed-db: ## Seed database with initial data
 	cd apps/backend && uv run python -m scripts.seed
 
-load-onet: ## Load O*NET career taxonomy data
-	cd apps/backend && uv run python -m scripts.load_onet_data
+load-onet: ## Load O*NET career taxonomy data and build the FAISS index
+	cd apps/backend && uv run python -m src.scripts.load_onet

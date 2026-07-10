@@ -110,35 +110,208 @@ Response 200:
 
 ## Assessment Endpoints
 
-### POST /assessments/sessions
+### POST /assessment/start
 
-Start a new assessment session.
+Start a new psychometric assessment session. Returns the session and the full question list.
 
-### GET /assessments/sessions/{session_id}
+Response 200:
 
-Get the current state of an assessment session.
+```json
+{
+  "session": {
+    "id": "uuid",
+    "user_id": "uuid",
+    "assessment_type": "big_five_riasec",
+    "status": "in_progress",
+    "started_at": "2026-07-10T12:00:00Z",
+    "completed_at": null
+  },
+  "questions": [
+    {
+      "id": "q1",
+      "text": "I enjoy exploring abstract ideas.",
+      "dimension": "openness",
+      "reversed": false,
+      "options": [
+        { "value": 1, "label": "Strongly Disagree" },
+        { "value": 5, "label": "Strongly Agree" }
+      ]
+    }
+  ],
+  "total_questions": 40
+}
+```
 
-### POST /assessments/sessions/{session_id}/responses
+### POST /assessment/submit
 
-Submit responses for a session.
+Submit all responses for a session and receive scored results.
 
-### POST /assessments/sessions/{session_id}/complete
+Request body:
 
-Mark a session as complete and trigger scoring.
+```json
+{
+  "session_id": "uuid",
+  "responses": {
+    "q1": 4,
+    "q2": 3
+  }
+}
+```
+
+Response 200:
+
+```json
+{
+  "session": { "...": "..." },
+  "results": {
+    "session_id": "uuid",
+    "assessment_type": "big_five_riasec",
+    "completed_at": "2026-07-10T12:10:00Z",
+    "dimension_scores": [
+      {
+        "dimension": "openness",
+        "display_name": "Openness",
+        "score": 84.0,
+        "confidence": 0.91,
+        "percentile": null
+      }
+    ],
+    "model_version": "1.0.0"
+  }
+}
+```
+
+### GET /assessment/results/{session_id}
+
+Get results for a completed session.
+
+## Profile Endpoints
+
+### GET /profile
+
+Get or auto-create the authenticated user's career profile.
+
+Response 200:
+
+```json
+{
+  "id": "uuid",
+  "user_id": "uuid",
+  "age_range": "25-34",
+  "education_level": "Bachelor's degree",
+  "current_field": "Technology",
+  "years_of_experience": 5,
+  "country": "India",
+  "primary_goal": "Become a senior software engineer",
+  "career_concerns": ["work-life balance"],
+  "desired_work_environment": "Remote",
+  "onboarding_completed": true,
+  "onboarding_step": 4,
+  "completeness_score": 85.0
+}
+```
+
+### PATCH /profile
+
+Partially update profile fields. Omitted fields are unchanged. Recomputes `completeness_score` automatically.
+
+Request body (all fields optional):
+
+```json
+{
+  "education_level": "Master's degree",
+  "years_of_experience": 6
+}
+```
+
+Response 200: same shape as `GET /profile`.
 
 ## Career Endpoints
 
-### GET /careers
-
-List career paths with optional filters.
-
-### GET /careers/{career_id}
-
-Get details for a single career path.
-
 ### GET /careers/recommendations
 
-Get personalized career recommendations for the authenticated user.
+Get personalised career recommendations for the authenticated user, ranked by composite score.
+
+Requires a completed assessment — returns `400` if none exists, `404` if no profile exists.
+
+Query parameters:
+
+- `top_k` (integer, 1–50, default 10) — number of recommendations to return.
+
+Response 200:
+
+```json
+{
+  "user_id": "uuid",
+  "profile_completeness": 85.0,
+  "recommendations": [
+    {
+      "career_id": "uuid",
+      "onet_code": "15-1252.00",
+      "title": "Software Developers",
+      "broad_category": "Computer and Mathematical",
+      "description": "...",
+      "median_salary_usd": 124200.0,
+      "outlook_percentile": 88.0,
+      "composite_score": 0.87,
+      "similarity_score": 0.80,
+      "riasec_score": 0.76,
+      "explanation": {
+        "career_id": "uuid",
+        "onet_code": "15-1252.00",
+        "title": "Software Developers",
+        "summary": "Software Developers is a high-confidence match based on your Investigative and Openness orientation.",
+        "confidence_band": "high",
+        "factors": [
+          {
+            "factor": "semantic_match",
+            "label": "Profile-career semantic similarity",
+            "score": 0.80,
+            "driver": "strong match",
+            "detail": "Your overall profile aligns with Software Developers at 80% semantic similarity."
+          }
+        ],
+        "top_matching_traits": ["Investigative", "Openness"]
+      }
+    }
+  ],
+  "warning": null
+}
+```
+
+If the career database has not been seeded, `warning` explains how to fix it (`Run: make load-onet`) and `recommendations` is an empty array.
+
+## Chat Endpoints
+
+### POST /chat/message
+
+Send a message to the AI career counsellor. The system prompt is automatically personalised using the user's psychometric scores and profile fields.
+
+Requires `ANTHROPIC_API_KEY` to be configured on the backend — returns `503` if not set.
+
+Request body:
+
+```json
+{
+  "message": "What careers match my Investigative score?",
+  "history": [
+    { "role": "user", "content": "Hi" },
+    { "role": "assistant", "content": "Hello! How can I help with your career today?" }
+  ]
+}
+```
+
+`history` is optional (max 20 prior turns, oldest first).
+
+Response 200:
+
+```json
+{
+  "reply": "Based on your strong Investigative score, careers like...",
+  "model": "claude-sonnet-4-6",
+  "tokens_used": 187
+}
+```
 
 ## Error Response Format
 
@@ -146,8 +319,7 @@ All errors return this structure:
 
 ```json
 {
-  "detail": "Human readable error message",
-  "code": "MACHINE_READABLE_CODE"
+  "detail": "Human readable error message"
 }
 ```
 
@@ -161,3 +333,5 @@ Status code meanings:
 - 422 means unprocessable entity
 - 429 means rate limit exceeded
 - 500 means internal server error
+- 502/504 mean the chat service (Anthropic API) failed or timed out
+- 503 means the chat service is not configured (missing ANTHROPIC_API_KEY)
