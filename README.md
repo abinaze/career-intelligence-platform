@@ -9,7 +9,7 @@
 [![Backend](https://img.shields.io/badge/backend-FastAPI%20%2B%20Python%203.12-009688.svg)](./apps/backend)
 [![Frontend](https://img.shields.io/badge/frontend-Next.js%2015%20%2B%20TypeScript-000000.svg)](./apps/frontend)
 
-[Documentation](./docs) · [Architecture](./docs/architecture/overview.md) · [API Reference](./docs/api/reference.md) · [Contributing](./CONTRIBUTING.md) · [Roadmap](./docs/ROADMAP.md)
+[Documentation](./docs) · [Vision](./docs/VISION.md) · [Architecture](./docs/architecture/overview.md) · [API Reference](./docs/api/reference.md) · [Contributing](./CONTRIBUTING.md) · [Roadmap](./docs/ROADMAP.md)
 
 </div>
 
@@ -28,7 +28,7 @@ Everything here runs on free and open-source infrastructure. No paid APIs are re
 Career guidance is a domain where a wrong recommendation has real cost — a semester in the wrong major, a career pivot that doesn't fit. That called for a system that:
 
 - **Scores, rather than assumes.** Big Five personality and RIASEC vocational interest dimensions are computed from a real assessment engine, not a static quiz result page.
-- **Explains itself.** Every recommendation ships with a confidence band and a decomposed breakdown of *why* — semantic profile match, interest alignment, salary context, market outlook — instead of a black-box score.
+- **Explains itself, and never issues a verdict.** The system does not say *"you must become a software engineer."* It explains why a career matches, what evidence supports the recommendation, how confident it is, and — critically — what would make it *less* confident. Overconfident, deterministic advice is treated as a bug, not a feature. See [`docs/VISION.md`](./docs/VISION.md) for the full explainability philosophy.
 - **Respects the person behind the data.** See the [Privacy & Data Ownership](#privacy--data-ownership) section below — this is an active area of the roadmap, not an afterthought.
 
 ## Features
@@ -169,6 +169,7 @@ This is a substantial architectural undertaking and is tracked as a dedicated ph
 
 | Document | Covers |
 |---|---|
+| [Product Vision](./docs/VISION.md) | Explainability philosophy, built-vs-planned AI engines, long-term direction |
 | [Architecture Overview](./docs/architecture/overview.md) | Services, data flow, security model |
 | [API Reference](./docs/api/reference.md) | Every endpoint, request/response shapes, error codes |
 | [Deployment Guide](./docs/deployment/guide.md) | Local dev, Docker, free-tier production deployment |
