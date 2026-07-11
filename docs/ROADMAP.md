@@ -4,6 +4,9 @@ This project has been built in discrete, reviewable phases. This document
 tracks what has shipped and what's planned, so contributors and users have
 an honest picture of the project's current state versus its direction.
 
+For the philosophy behind *why* the platform is built this way — not just
+*what* is built — see [`docs/VISION.md`](./VISION.md).
+
 ## Shipped
 
 | Phase | Scope |
@@ -72,6 +75,26 @@ infrastructure:
 This phase depends on Phase 9 being far enough along that the deployed
 instance reflects the intended privacy model, not the current
 all-data-in-Postgres architecture.
+
+### Phase 11 — Extended AI engines
+
+The platform's AI layer is designed around seven cooperating engines (see
+[`docs/VISION.md`](./VISION.md#technical-architecture-built-versus-planned)
+for the full rationale). Four are built today: Psychometric, Recommendation,
+Explainability, and a partial Career Ontology integration (O*NET seed data
+only, no dedicated ontology service yet). Three are planned:
+
+- **Behavioral Engine** — pattern recognition from how a user interacts
+  with the platform over time, rather than a one-time assessment snapshot.
+- **Skill Gap Engine** — compares a user's current skills against a target
+  career's actual requirements and surfaces the specific, actionable gap.
+- **Labor Market Engine** — deeper market-signal integration beyond the
+  current static outlook percentile field — real-time demand signals and
+  regional variation.
+
+These are listed here, rather than in the README's feature table, precisely
+because they are not built. This phase has no committed start date; it
+follows Phases 9 and 10.
 
 ## How to follow along
 
