@@ -1,4 +1,5 @@
 import { apiClient } from "@/lib/api/client";
+import { getActiveStorageAdapter } from "@/features/storage/adapters/registry";
 import type {
   StartAssessmentResponse,
   SubmitAssessmentRequest,
@@ -8,7 +9,16 @@ import type {
 
 /**
  * Assessment API layer.
- * All HTTP calls for the assessment feature live here.
+ *
+ * start(), submit(), and getLatestResults() delegate to the active
+ * storage adapter (see features/storage) so behavior automatically
+ * follows the user's chosen storage provider. Default provider is
+ * "platform", so existing behavior is unchanged unless the user opts
+ * into local-device storage in Settings.
+ *
+ * getResults(sessionId) remains platform-only: local-device storage
+ * has no concept of multiple historical sessions by ID, only "the
+ * latest" result.
  */
 export const assessmentApi = {
   /**
@@ -16,32 +26,30 @@ export const assessmentApi = {
    * Returns the session metadata and the full question list.
    */
   async start(): Promise<StartAssessmentResponse> {
-    const response = await apiClient.post<StartAssessmentResponse>(
-      "/assessment/start",
-    );
-    return response.data;
+    const adapter = getActiveStorageAdapter();
+    return adapter.startAssessment("full");
   },
 
   /**
    * Submit all responses and retrieve scored results.
    */
-  async submit(
-    payload: SubmitAssessmentRequest,
-  ): Promise<SubmitAssessmentResponse> {
-    const response = await apiClient.post<SubmitAssessmentResponse>(
-      "/assessment/submit",
-      payload,
+  async submit(payload: SubmitAssessmentRequest): Promise<SubmitAssessmentResponse> {
+    const adapter = getActiveStorageAdapter();
+    const { session, results } = await adapter.submitAssessment(
+      payload.session_id,
+      payload.responses,
     );
-    return response.data;
+    return {
+      session: session as SubmitAssessmentResponse["session"],
+      results,
+    };
   },
 
   /**
-   * Retrieve results for a completed session by ID.
+   * Retrieve results for a completed session by ID. Platform storage only.
    */
   async getResults(sessionId: string): Promise<AssessmentResults> {
-    const response = await apiClient.get<AssessmentResults>(
-      `/assessment/${sessionId}/results`,
-    );
+    const response = await apiClient.get<AssessmentResults>(`/assessment/${sessionId}/results`);
     return response.data;
   },
 
@@ -50,10 +58,9 @@ export const assessmentApi = {
    * authenticated user, or null if none exists.
    */
   async getLatestResults(): Promise<AssessmentResults | null> {
+    const adapter = getActiveStorageAdapter();
     try {
-      const response =
-        await apiClient.get<AssessmentResults>("/assessment/latest");
-      return response.data;
+      return await adapter.getLatestAssessmentResults();
     } catch {
       return null;
     }
