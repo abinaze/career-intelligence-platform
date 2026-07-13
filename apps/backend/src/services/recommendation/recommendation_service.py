@@ -103,12 +103,48 @@ class RecommendationService:
             )
         score_map: dict[str, float] = {s.dimension: s.score for s in scores}
 
-        # 3. Build profile text and embed
         profile_meta: dict[str, str | None] = {
             "education_level": profile.education_level,
             "current_field": profile.current_field,
             "primary_goal": profile.primary_goal,
         }
+
+        return await self.recommend_from_data(
+            user_id=str(user_id),
+            score_map=score_map,
+            profile_meta=profile_meta,
+            profile_completeness=profile.completeness_score,
+            top_k=top_k,
+        )
+
+    async def recommend_from_data(
+        self,
+        user_id: str,
+        score_map: dict[str, float],
+        profile_meta: dict[str, str | None],
+        profile_completeness: float,
+        top_k: int = _DEFAULT_RETURN,
+    ) -> RecommendationResult:
+        """
+        Core recommendation pipeline, independent of how the caller obtained
+        the user's profile and psychometric scores.
+
+        This method touches the database only to read the shared career
+        catalog and FAISS index — never per-user personal data. It is safe
+        to call with data supplied directly by a client (e.g. from
+        local-device or bring-your-own-storage flows) rather than looked
+        up from a per-user database record.
+
+        Raises:
+            HTTP 400 — score_map is empty (no assessment data supplied).
+        """
+        if not score_map:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="No completed assessment found. Complete an assessment first.",
+            )
+
+        # 3. Build profile text and embed
         profile_text = build_profile_text(score_map, profile_meta)
         query_vector = embed_text(profile_text)
 
@@ -121,8 +157,8 @@ class RecommendationService:
 
         if not similarity_hits:
             return RecommendationResult(
-                user_id=str(user_id),
-                profile_completeness=profile.completeness_score,
+                user_id=user_id,
+                profile_completeness=profile_completeness,
                 recommendations=[],
                 warning="Career database is empty. Run: make load-onet",
             )
@@ -182,12 +218,12 @@ class RecommendationService:
 
         logger.info(
             "Recommendations generated",
-            user_id=str(user_id),
+            user_id=user_id,
             count=len(recommendations),
         )
         return RecommendationResult(
-            user_id=str(user_id),
-            profile_completeness=profile.completeness_score,
+            user_id=user_id,
+            profile_completeness=profile_completeness,
             recommendations=recommendations,
         )
 

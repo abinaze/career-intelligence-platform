@@ -19,6 +19,7 @@ from src.api.v1.endpoints.auth import router as auth_router
 from src.api.v1.endpoints.careers import router as careers_router
 from src.api.v1.endpoints.chat import router as chat_router
 from src.api.v1.endpoints.profile import router as profile_router
+from src.api.v1.endpoints.stateless import router as stateless_router
 from src.core.config.settings import get_settings
 from src.core.logging.setup import configure_logging, get_logger
 from src.db.engine import check_database_connection
@@ -103,6 +104,7 @@ def create_application() -> FastAPI:
     app.include_router(careers_router, prefix=_settings.API_V1_PREFIX)
     app.include_router(profile_router, prefix=_settings.API_V1_PREFIX)
     app.include_router(chat_router, prefix=_settings.API_V1_PREFIX)
+    app.include_router(stateless_router, prefix=_settings.API_V1_PREFIX)
 
     @app.get("/health", tags=["Health"], include_in_schema=False)
     async def health_check() -> dict[str, str]:

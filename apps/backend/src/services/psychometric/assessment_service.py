@@ -10,7 +10,9 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.ai.psychometric_engine.dimensions import DIMENSION_METADATA, PsychometricDimension
-from src.ai.psychometric_engine.question_bank import QUESTION_BANK, LikertQuestion
+from src.ai.psychometric_engine.question_bank import (
+    get_questions_for_type,
+)
 from src.ai.psychometric_engine.scorer import score_responses
 from src.core.logging.setup import get_logger
 from src.db.models.profile import AssessmentSession, PsychometricScore, UserProfile
@@ -28,20 +30,6 @@ from src.schemas.responses.assessment import (
 )
 
 logger = get_logger(__name__)
-
-_QUICK_DIMENSIONS = {
-    PsychometricDimension.OPENNESS,
-    PsychometricDimension.CONSCIENTIOUSNESS,
-    PsychometricDimension.EXTRAVERSION,
-    PsychometricDimension.AGREEABLENESS,
-    PsychometricDimension.NEUROTICISM,
-}
-
-
-def _get_questions(assessment_type: str) -> list[LikertQuestion]:
-    if assessment_type == "quick":
-        return [q for q in QUESTION_BANK if q.dimension in _QUICK_DIMENSIONS]
-    return list(QUESTION_BANK)
 
 
 class AssessmentService:
@@ -66,7 +54,7 @@ class AssessmentService:
         await self.db.commit()
         await self.db.refresh(session)
 
-        questions = _get_questions(payload.assessment_type)
+        questions = get_questions_for_type(payload.assessment_type)
         logger.info(
             "Assessment session started",
             session_id=str(session.id),

@@ -42,6 +42,7 @@ Career guidance is a domain where a wrong recommendation has real cost — a sem
 | **Career Data** | O*NET occupational taxonomy integration with salary and outlook data |
 | **AI Career Chat** | Conversational counsellor grounded in the user's own psychometric profile (via Claude) |
 | **Profile & Settings** | Editable career profile with live completeness scoring, account and security settings |
+| **Data Storage Choice** | Store your data with your account (default) or exclusively on this device — switchable anytime in Settings → Storage |
 | **Dashboard** | Live status across assessment, recommendations, and profile completeness |
 
 ## Architecture at a glance
@@ -161,9 +162,9 @@ See [`docs/deployment/guide.md`](./docs/deployment/guide.md) for free-tier produ
 
 ## Privacy & data ownership
 
-This project takes the position that **career and psychometric data is uniquely personal**, and is actively moving toward a "bring your own storage" model where the platform itself does not retain a copy of your personal data on its own servers. Instead, you choose where your data lives — this device, your own cloud storage account, or a local export you control — and the platform operates on it in place.
+This project takes the position that **career and psychometric data is uniquely personal**. Rather than only stating this as an intention, Phase 9a has shipped a real, working first step: from **Settings → Storage**, you can switch from the default account-based storage to **This Device** storage, where your profile, assessment results, and recommendations are kept exclusively in your browser's local storage and never written to the platform's database. The backend still performs the computation (scoring, similarity search, ranking) but does so statelessly — it never persists what you send it under this mode.
 
-This is a substantial architectural undertaking and is tracked as a dedicated phase of work rather than a marketing claim. The current version stores profile and assessment data in a conventional PostgreSQL database, as described in the architecture doc above. Track progress and design discussion in [`docs/ROADMAP.md`](./docs/ROADMAP.md).
+Google Drive, OneDrive, Dropbox, and local-folder export are the next steps on this path, each behind the same storage-adapter interface proven by the local-device implementation. See [`docs/architecture/byos.md`](./docs/architecture/byos.md) for the technical design and [`docs/ROADMAP.md`](./docs/ROADMAP.md) for what's shipped versus planned — including the honest trade-offs (no cross-device sync for on-device storage, no export/import yet) rather than only the upside.
 
 ## Documentation
 
@@ -171,6 +172,7 @@ This is a substantial architectural undertaking and is tracked as a dedicated ph
 |---|---|
 | [Product Vision](./docs/VISION.md) | Explainability philosophy, built-vs-planned AI engines, long-term direction |
 | [Architecture Overview](./docs/architecture/overview.md) | Services, data flow, security model |
+| [BYOS Architecture](./docs/architecture/byos.md) | Storage adapter pattern, stateless endpoints, what "This Device" storage does and doesn't do |
 | [API Reference](./docs/api/reference.md) | Every endpoint, request/response shapes, error codes |
 | [Deployment Guide](./docs/deployment/guide.md) | Local dev, Docker, free-tier production deployment |
 | [Roadmap](./docs/ROADMAP.md) | Completed phases and what's next |

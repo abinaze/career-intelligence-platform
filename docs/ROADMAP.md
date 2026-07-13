@@ -19,6 +19,7 @@ For the philosophy behind *why* the platform is built this way — not just
 | **6 — AI Career Chat** | Chat endpoint grounded in the user's psychometric profile, full conversational UI |
 | **7 — Production Readiness (infra)** | Multi-stage Docker builds for both apps, nginx reverse proxy config, corrected environment documentation |
 | **8 — Professional Documentation & Licensing** | This README rewrite, license change to PolyForm Noncommercial, contribution guidelines, security policy, issue/PR templates |
+| **9a — BYOS: Storage Adapter Pattern + Local Device Storage** | `StorageAdapter` interface, `PlatformAdapter` (existing DB-backed behavior, unchanged), `LocalDeviceAdapter` (IndexedDB-backed), 3 new stateless backend endpoints for compute-without-persistence, Settings → Storage tab, storage selection UI |
 
 ## In progress / planned
 
@@ -26,22 +27,44 @@ For the philosophy behind *why* the platform is built this way — not just
 
 The long-term direction for this project is to **not retain a copy of users'
 personal career and psychometric data on the platform's own servers.**
-Instead, at onboarding, a user chooses where their data lives:
+Instead, a user chooses where their data lives. This is being built as a
+sequence of sub-phases rather than one large change — see
+[`docs/architecture/byos.md`](./architecture/byos.md) for the full technical
+design of what's shipped so far.
 
-- **This device** — private, browser-based storage (e.g., IndexedDB), never
-  leaves the device.
-- **Google Drive / Microsoft OneDrive / Dropbox** — the user's own cloud
-  storage account, connected via OAuth, holding an encrypted data file the
-  platform reads and writes to on the user's behalf.
-- **Local folder** — export and import a data file manually, giving the user
-  full offline control.
+**✅ Phase 9a — Storage adapter pattern + Local Device storage (shipped)**
 
-**What this means architecturally:** the backend's role shifts from "owner
-of a persistent users' data store" to "stateless compute over data the
-client supplies or fetches from the user's chosen provider." This is a
-significant redesign of the profile, assessment, and recommendation data
-paths — not a small feature flag — and is being tracked as its own phase
-rather than rushed into the existing architecture.
+Introduced the `StorageAdapter` interface on the frontend and two
+implementations: `PlatformAdapter` (wraps the existing DB-backed endpoints,
+zero behavior change for the default experience) and `LocalDeviceAdapter`
+(browser IndexedDB, opt-in via Settings → Storage). Added three stateless
+backend endpoints (`/stateless/questions`, `/stateless/score`,
+`/stateless/recommendations`) that compute a result from client-supplied
+data without persisting it — reusing the exact same scoring and
+recommendation logic as the DB-backed path via a shared
+`recommend_from_data()` core method, not a duplicated implementation.
+
+**🔲 Phase 9b — Google Drive backend**
+
+Same `StorageAdapter` interface, a `GoogleDriveAdapter` implementation:
+OAuth connection flow, an encrypted data file read from and written to the
+user's own Drive.
+
+**🔲 Phase 9c — OneDrive + Dropbox backends**
+
+Same pattern as 9b, for the remaining two cloud providers.
+
+**🔲 Phase 9d — Local folder export/import**
+
+Manual export-to-file and import-from-file support, for users who want
+full offline control without a cloud account.
+
+**🔲 Phase 9e — Onboarding integration + provider switching**
+
+Wires the storage choice into the first-run registration flow (currently
+it's only reachable via Settings after account creation), and builds
+migration tooling so switching providers later actually moves data instead
+of starting fresh.
 
 **Trade-offs being designed around**, and documented openly rather than
 glossed over:
@@ -56,8 +79,7 @@ glossed over:
   this model — this is a deliberate trade-off of the privacy-first design,
   not an oversight.
 
-This phase is under active design. Progress will be tracked via issues
-labeled `phase-9-byos`.
+Progress on 9b–9e will be tracked via issues labeled `phase-9-byos`.
 
 ### Phase 10 — Free-tier production deployment
 
