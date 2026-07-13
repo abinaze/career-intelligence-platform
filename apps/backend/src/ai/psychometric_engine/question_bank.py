@@ -247,6 +247,33 @@ def get_questions_for_dimension(dimension: PsychometricDimension) -> list[Likert
     return [q for q in QUESTION_BANK if q.dimension == dimension]
 
 
+# Dimensions covered by the shorter "quick" assessment variant — Big Five only.
+QUICK_ASSESSMENT_DIMENSIONS: set[PsychometricDimension] = {
+    PsychometricDimension.OPENNESS,
+    PsychometricDimension.CONSCIENTIOUSNESS,
+    PsychometricDimension.EXTRAVERSION,
+    PsychometricDimension.AGREEABLENESS,
+    PsychometricDimension.NEUROTICISM,
+}
+
+
+def get_questions_for_type(assessment_type: str) -> list[LikertQuestion]:
+    """
+    Return the question set for a given assessment type.
+
+    Args:
+        assessment_type: "quick" for Big Five only, anything else
+            (typically "full") for the complete Big Five + RIASEC set.
+
+    Pure function, no I/O — safe to call from both the session-based
+    assessment flow and the stateless (no-persistence) flow used by
+    local-device storage.
+    """
+    if assessment_type == "quick":
+        return [q for q in QUESTION_BANK if q.dimension in QUICK_ASSESSMENT_DIMENSIONS]
+    return list(QUESTION_BANK)
+
+
 def get_question_by_id(question_id: str) -> LikertQuestion | None:
     """Return a single question by its identifier, or None if not found."""
     for question in QUESTION_BANK:
