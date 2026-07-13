@@ -313,6 +313,90 @@ Response 200:
 }
 ```
 
+## Stateless Endpoints (BYOS)
+
+These endpoints back the local-device and bring-your-own-storage frontend
+flows (see [`docs/architecture/byos.md`](../architecture/byos.md)). All
+require authentication, but none read or write personal profile or
+assessment data to the database — only the shared career catalog is read.
+Callers supply their own data directly in the request and receive a
+computed result back.
+
+### GET /stateless/questions
+
+Returns the static assessment question bank without creating a database
+session, unlike `POST /assessment/start`.
+
+Query parameters:
+
+- `assessment_type` (string, default `"full"`) — `"full"` or `"quick"`.
+
+Response 200:
+
+```json
+{
+  "questions": [
+    { "id": "ocean_open_01", "dimension": "openness", "prompt": "...", "reverse_scored": false }
+  ],
+  "total_questions": 38
+}
+```
+
+### POST /stateless/score
+
+Score a set of Likert responses without persisting anything.
+
+Request body:
+
+```json
+{
+  "responses": { "ocean_open_01": 4, "ocean_open_02": 3 }
+}
+```
+
+Response 200:
+
+```json
+{
+  "model_version": "1.0.0",
+  "dimension_scores": [
+    {
+      "dimension": "openness",
+      "display_name": "Openness",
+      "score": 62.5,
+      "confidence": 1.0,
+      "item_count": 4,
+      "low_label": "...",
+      "high_label": "..."
+    }
+  ]
+}
+```
+
+### POST /stateless/recommendations
+
+Generate recommendations from client-supplied psychometric scores and
+profile fields, rather than looking them up from the database. Uses the
+same recommendation pipeline as `GET /careers/recommendations` — same
+FAISS search, same multi-factor ranking, same explainability output.
+
+Request body:
+
+```json
+{
+  "dimension_scores": { "openness": 84.0, "investigative": 88.0 },
+  "profile": {
+    "education_level": "Bachelor's degree",
+    "current_field": "Technology",
+    "primary_goal": "Become a senior engineer"
+  },
+  "top_k": 10
+}
+```
+
+Response 200: identical shape to `GET /careers/recommendations` — see
+above.
+
 ## Error Response Format
 
 All errors return this structure:
