@@ -20,6 +20,7 @@ from src.api.v1.endpoints.careers import router as careers_router
 from src.api.v1.endpoints.chat import router as chat_router
 from src.api.v1.endpoints.profile import router as profile_router
 from src.api.v1.endpoints.stateless import router as stateless_router
+from src.api.v1.endpoints.storage_oauth import router as storage_oauth_router
 from src.core.config.settings import get_settings
 from src.core.logging.setup import configure_logging, get_logger
 from src.db.engine import check_database_connection
@@ -105,20 +106,29 @@ def create_application() -> FastAPI:
     app.include_router(profile_router, prefix=_settings.API_V1_PREFIX)
     app.include_router(chat_router, prefix=_settings.API_V1_PREFIX)
     app.include_router(stateless_router, prefix=_settings.API_V1_PREFIX)
+    app.include_router(storage_oauth_router, prefix=_settings.API_V1_PREFIX)
 
     @app.get("/health", tags=["Health"], include_in_schema=False)
     async def health_check() -> dict[str, str]:
         from src.ai.recommendation_engine.faiss_index import career_index as ci
+        from src.core.cache.redis_client import check_redis_connection
 
         db_status = "ok" if await check_database_connection() else "degraded"
+        redis_status = "ok" if await check_redis_connection() else "degraded"
         return {
             "status": "ok",
             "version": _settings.APP_VERSION,
             "environment": _settings.ENVIRONMENT,
             "database": db_status,
+            "redis": redis_status,
             "faiss_index": "ready" if ci.is_ready else "not_built",
             "faiss_careers": str(ci.size),
             "chat": "enabled" if _settings.ANTHROPIC_API_KEY else "disabled",
+            "google_drive_storage": (
+                "enabled"
+                if _settings.GOOGLE_CLIENT_ID and _settings.GOOGLE_CLIENT_SECRET
+                else "disabled"
+            ),
         }
 
     @app.get("/", tags=["Root"], include_in_schema=False)

@@ -93,6 +93,25 @@ class Settings(BaseSettings):
     # ── Chat / LLM ────────────────────────────────────────────────────────────
     ANTHROPIC_API_KEY: str | None = None
 
+    # ── Frontend (used to build BYOS OAuth redirect targets) ────────────────────
+    FRONTEND_URL: str = "http://localhost:3000"
+
+    # ── BYOS: Google Drive OAuth broker ──────────────────────────────────────
+    # The backend never persists these tokens (see docs/architecture/byos.md).
+    # It only brokers the OAuth handshake because the Google client *secret*
+    # cannot live in browser JS; the resulting tokens are handed back to the
+    # browser, which talks to the Drive REST API directly from then on.
+    GOOGLE_CLIENT_ID: str | None = None
+    GOOGLE_CLIENT_SECRET: str | None = None
+    GOOGLE_OAUTH_REDIRECT_URI: str = "http://localhost:8000/api/v1/storage/google-drive/callback"
+    GOOGLE_DRIVE_SCOPES: list[str] = ["https://www.googleapis.com/auth/drive.appdata"]
+    # Ticket: binds "a connect flow is underway" to a user_id across the
+    # browser-navigation Google redirect (which carries no Authorization header).
+    GOOGLE_DRIVE_TICKET_TTL_SECONDS: int = 300
+    # Exchange code: stages freshly-issued tokens for a few seconds so they
+    # never have to travel through a URL query string.
+    GOOGLE_DRIVE_EXCHANGE_TTL_SECONDS: int = 60
+
     # ── Background Jobs ───────────────────────────────────────────────────────
     CELERY_BROKER_URL: str = "redis://localhost:6379/1"
     CELERY_RESULT_BACKEND: str = "redis://localhost:6379/2"

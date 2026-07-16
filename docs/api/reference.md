@@ -397,6 +397,93 @@ Request body:
 Response 200: identical shape to `GET /careers/recommendations` — see
 above.
 
+## Storage — Google Drive (BYOS)
+
+Backend broker for the Google Drive BYOS storage option (see
+[`docs/architecture/byos.md`](../architecture/byos.md)). The backend never
+persists the tokens these endpoints hand back — it only brokers the OAuth
+handshake because the Google client secret can't live in browser JS. All
+endpoints below require authentication except the callback, which is a
+plain browser redirect target and carries no Authorization header.
+
+### GET /storage/google-drive/connect
+
+Starts a connect flow. Stages a short-lived ticket (5 min TTL) binding the
+attempt to the current user, and returns the URL to send the browser to.
+
+Response 200:
+
+```json
+{ "authorize_url": "https://accounts.google.com/o/oauth2/v2/auth?..." }
+```
+
+### GET /storage/google-drive/callback
+
+Not called by the frontend directly — this is Google's redirect target.
+Exchanges the authorization code for tokens, stages them under a
+single-use exchange code (60s TTL), and 302-redirects the browser to
+`{FRONTEND_URL}/settings?tab=storage&gdrive_exchange={code}` on success, or
+`...&gdrive_error={reason}` on failure. Excluded from the OpenAPI schema
+since it's not meant to be called as an API.
+
+### POST /storage/google-drive/exchange
+
+Claims a staged exchange code. Single-use — the code is deleted the moment
+it's claimed, and claiming it twice returns 400 on the second call.
+
+Request body:
+
+```json
+{ "exchange_code": "abc123..." }
+```
+
+Response 200:
+
+```json
+{
+  "access_token": "ya29...",
+  "refresh_token": "1//...",
+  "token_type": "Bearer",
+  "expires_at": "2026-07-16T21:00:00+00:00",
+  "scope": "https://www.googleapis.com/auth/drive.appdata"
+}
+```
+
+The frontend stores these client-side (IndexedDB, alongside local-device
+data) and calls the Drive REST API directly from then on.
+
+### POST /storage/google-drive/refresh
+
+Exchanges a refresh token for a new access token when the current one
+expires.
+
+Request body:
+
+```json
+{ "refresh_token": "1//..." }
+```
+
+Response 200: same shape as `/exchange` (`refresh_token` is often omitted —
+Google only rotates it occasionally).
+
+### POST /storage/google-drive/disconnect
+
+Revokes a token at Google. Idempotent: a token Google already considers
+invalid still counts as revoked. The frontend clears its local copy
+regardless of this call's outcome.
+
+Request body:
+
+```json
+{ "token": "ya29..." }
+```
+
+Response 200:
+
+```json
+{ "revoked": true }
+```
+
 ## Error Response Format
 
 All errors return this structure:
