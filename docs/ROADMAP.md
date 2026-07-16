@@ -44,11 +44,21 @@ data without persisting it — reusing the exact same scoring and
 recommendation logic as the DB-backed path via a shared
 `recommend_from_data()` core method, not a duplicated implementation.
 
-**🔲 Phase 9b — Google Drive backend**
+**🟡 Phase 9b — Google Drive backend (in progress)**
 
 Same `StorageAdapter` interface, a `GoogleDriveAdapter` implementation:
-OAuth connection flow, an encrypted data file read from and written to the
-user's own Drive.
+OAuth connection flow, a data file read from and written to the user's own
+Drive `appDataFolder` space. **Not end-to-end encrypted** — an intentional,
+documented scope limitation of this phase, not a bug (see
+[`docs/architecture/byos.md`](architecture/byos.md)).
+
+- ✅ Backend OAuth broker shipped: five endpoints implementing a
+  ticket/exchange-staged handshake so the backend never persists Drive
+  tokens (see the API reference's
+  [Storage — Google Drive (BYOS) section](api/reference.md)).
+- 🔲 Frontend still pending: `GoogleDriveAdapter.ts`, the raw Drive REST
+  client, token storage, `GoogleDriveConnect.tsx`, and settings-tab
+  routing.
 
 **🔲 Phase 9c — OneDrive + Dropbox backends**
 

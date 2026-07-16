@@ -105,10 +105,64 @@ buried:
   roadmap — right now, switching away from "This Device" does not migrate
   data anywhere.
 
+## Google Drive OAuth flow (Phase 9b backend broker — shipped)
+
+The backend brokers the handshake but never stores the resulting tokens.
+Five endpoints under `/storage/google-drive/*` (full request/response
+detail in [`docs/api/reference.md`](../api/reference.md)) implement four
+legs plus disconnect:
+
+```
+Browser                      Backend                        Google
+  |--- GET /connect --------->|                                |
+  |                           |-- stage ticket (Redis, 5m) --->|
+  |<-- authorize_url ---------|                                |
+  |------------------- navigate to authorize_url -------------->|
+  |                                                    user approves
+  |<----------------- 302 redirect w/ code, state=ticket --------|
+  |--- GET /callback?code&state=ticket ->|                       |
+  |                           |-- validate ticket, delete it     |
+  |                           |-- POST /token (code) ----------->|
+  |                           |<-- access+refresh tokens --------|
+  |                           |-- stage exchange code (Redis,60s)|
+  |<-- 302 to /settings?...&gdrive_exchange=<code> --------------|
+  |--- POST /exchange {exchange_code} -->|                       |
+  |                           |-- claim + delete (single-use)    |
+  |<-- access_token, refresh_token, expires_at, scope -----------|
+  |                    (browser stores tokens in IndexedDB;
+  |                     talks to Drive REST API directly from here)
+  |--- POST /refresh {refresh_token} --->|-- POST /token ------->|
+  |<-- new access_token ------------------|<-- new access_token --|
+  |--- POST /disconnect {token} --------->|-- POST /revoke ------>|
+  |<-- { revoked: true } -----------------|                       |
+```
+
+Why two staged secrets instead of one: the **ticket** exists because the
+browser's redirect to `/callback` carries no Authorization header, so the
+backend needs some other way to know which user is connecting. The
+**exchange code** exists so the tokens never travel through a URL query
+string (which would leak into browser history and server access logs) —
+they only ever cross the wire once, over an authenticated POST, and the
+code is deleted immediately after being claimed.
+
+Both are staged in Redis with short TTLs (5 min / 60s) and are the *only*
+thing Redis is used for in this project — never personal data. Google
+credentials (`GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET`) are required
+backend configuration; endpoints that need them return 503 if unset.
+
+**Not built yet in this phase:** the frontend `GoogleDriveAdapter.ts` that
+ties this broker together with the raw Drive REST client into the
+`StorageAdapter` interface, plus the connect/disconnect UI. Until that
+lands, `google_drive` remains marked `"coming_soon"` in
+`STORAGE_PROVIDERS` and isn't reachable from the Settings UI yet.
+
 ## What's explicitly not in this phase
 
-- Google Drive, OneDrive, Dropbox backends — Phase 9b/9c, same
-  `StorageAdapter` interface, different concrete implementation with OAuth.
+- The `GoogleDriveAdapter.ts` frontend implementation, raw Drive REST
+  client wiring, token storage helpers, and connect/disconnect UI — the
+  backend broker above is done; this is what's left of Phase 9b.
+- OneDrive, Dropbox backends — Phase 9c, same `StorageAdapter` interface,
+  different concrete implementation with OAuth.
 - Local folder export/import — Phase 9d.
 - Wiring the storage choice into the registration/onboarding flow — for
   now, the choice lives in **Settings → Storage**, reachable after account
