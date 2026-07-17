@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { ProfileForm } from "./ProfileForm";
 import { AccountForm } from "./AccountForm";
@@ -17,6 +18,12 @@ const TABS = [
 ] as const;
 
 type TabId = (typeof TABS)[number]["id"];
+
+const TAB_IDS: readonly string[] = TABS.map((t) => t.id);
+
+function isTabId(value: string | null): value is TabId {
+  return value !== null && TAB_IDS.includes(value);
+}
 
 const SECTION_META: Record<TabId, { title: string; description: string }> = {
   profile: {
@@ -44,7 +51,11 @@ const SECTION_META: Record<TabId, { title: string; description: string }> = {
 };
 
 export function SettingsShell() {
-  const [activeTab, setActiveTab] = useState<TabId>("profile");
+  const searchParams = useSearchParams();
+  const requestedTab = searchParams.get("tab");
+  const [activeTab, setActiveTab] = useState<TabId>(
+    isTabId(requestedTab) ? requestedTab : "profile",
+  );
   const meta = SECTION_META[activeTab];
 
   return (
