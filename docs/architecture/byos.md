@@ -150,17 +150,30 @@ thing Redis is used for in this project — never personal data. Google
 credentials (`GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET`) are required
 backend configuration; endpoints that need them return 503 if unset.
 
-**Not built yet in this phase:** the frontend `GoogleDriveAdapter.ts` that
-ties this broker together with the raw Drive REST client into the
-`StorageAdapter` interface, plus the connect/disconnect UI. Until that
-lands, `google_drive` remains marked `"coming_soon"` in
-`STORAGE_PROVIDERS` and isn't reachable from the Settings UI yet.
+**Frontend (also shipped):** `GoogleDriveAdapter.ts` ties this broker
+together with the raw Drive REST client (`googleDriveClient.ts`) into the
+`StorageAdapter` interface. `GoogleDriveConnect.tsx` (rendered in
+Settings → Storage) drives the handshake: a "Connect Google Drive" button
+kicks off the full-page redirect, and the component detects the
+`gdrive_exchange`/`gdrive_error` params on the post-callback landing,
+claims the tokens, and stores them via `googleDriveTokens.ts` (the same
+IndexedDB store `LocalDeviceAdapter` uses, under a distinct key). Selecting
+Google Drive from the provider picker itself is deliberately blocked
+(`useStorageProvider.selectProvider` requires `fromConnectFlow: true`) —
+there's no valid state where clicking the picker card alone should switch
+the active provider, since no tokens exist until the connect flow
+succeeds. `google_drive` is marked `"available"` in `STORAGE_PROVIDERS`,
+but the picker shows a "Connect below ↓" badge instead of letting the
+card itself switch providers.
+
+Token refresh happens two ways: proactively (`GoogleDriveAdapter` checks
+expiry with a 60-second skew before every Drive call) and reactively (one
+retry via forced refresh if Drive itself returns 401 — covers the case
+where the user revoked access directly from their Google account, outside
+this app).
 
 ## What's explicitly not in this phase
 
-- The `GoogleDriveAdapter.ts` frontend implementation, raw Drive REST
-  client wiring, token storage helpers, and connect/disconnect UI — the
-  backend broker above is done; this is what's left of Phase 9b.
 - OneDrive, Dropbox backends — Phase 9c, same `StorageAdapter` interface,
   different concrete implementation with OAuth.
 - Local folder export/import — Phase 9d.
@@ -169,6 +182,14 @@ lands, `google_drive` remains marked `"coming_soon"` in
   creation. First-run integration is Phase 9e.
 - Migrating existing platform-stored data into local storage, or vice
   versa, when a user switches providers.
+- A "clear my Drive data" affordance in Settings — `GoogleDriveAdapter`
+  implements `clearAll()` (deletes the Drive data file) for interface
+  completeness, but the Settings UI's "clear data" section is still
+  local-device-only; wiring it up for Drive too is a small follow-up, not
+  done here to avoid scope creep beyond what was asked.
+- Real-credential end-to-end testing — see
+  [`docs/setup/google-oauth-setup.md`](../setup/google-oauth-setup.md) and
+  the honesty note in `docs/ROADMAP.md`.
 
 ## A note on a bug found and fixed along the way
 
