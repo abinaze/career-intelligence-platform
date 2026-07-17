@@ -5,6 +5,7 @@ import { AlertTriangle, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useStorageProvider } from "@/features/storage/hooks/useStorageProvider";
 import { StorageOnboarding } from "@/features/storage/components/StorageOnboarding";
+import { GoogleDriveConnect } from "@/features/storage/components/GoogleDriveConnect";
 
 export function StorageSettings() {
   const { provider, providerMeta, adapter } = useStorageProvider();
@@ -30,6 +31,11 @@ export function StorageSettings() {
 
       {/* Provider picker */}
       <StorageOnboarding compact />
+
+      {/* Google Drive connect/disconnect — always rendered so it can pick
+          up the post-OAuth-redirect landing regardless of the currently
+          active provider. */}
+      <GoogleDriveConnect />
 
       {/* Local-device-only: clear data */}
       {provider === "local_device" && (
