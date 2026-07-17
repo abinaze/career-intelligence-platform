@@ -45,7 +45,7 @@ export const STORAGE_PROVIDERS: StorageProviderMeta[] = [
     label: "Google Drive",
     description: "Store your data securely in your Google Drive account.",
     icon: "☁️",
-    availability: "coming_soon",
+    availability: "available",
   },
   {
     id: "onedrive",
@@ -83,6 +83,20 @@ export interface LocalAssessmentResults {
   completed_at: string;
   dimension_scores: DimensionScore[];
   model_version: string;
+}
+
+/**
+ * Shape of the single JSON file GoogleDriveAdapter reads/writes in the
+ * user's Drive appDataFolder (career-intelligence-data.json). Mirrors
+ * what LocalDeviceAdapter keeps across three separate IndexedDB keys,
+ * combined into one file since Drive storage is file-based rather than
+ * key-based.
+ */
+export interface GoogleDriveFileContents {
+  profile: UserProfile | null;
+  assessment: LocalAssessmentResults | null;
+  recommendations: RecommendationResult | null;
+  updated_at: string;
 }
 
 // ── Storage adapter interface ─────────────────────────────────────────────────

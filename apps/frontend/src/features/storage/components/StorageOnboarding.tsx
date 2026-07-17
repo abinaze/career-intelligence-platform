@@ -46,20 +46,26 @@ export function StorageOnboarding({ onSelected, compact = false }: StorageOnboar
         {providers.map((p) => {
           const isActive = p.id === provider;
           const isComingSoon = p.availability === "coming_soon";
+          // google_drive is genuinely available, but can't be switched to
+          // by a plain picker click — it needs the OAuth connect flow
+          // below (see useStorageProvider.selectProvider). Distinguish
+          // this from "coming soon" rather than lumping them together,
+          // since the underlying reason and the copy shown are different.
+          const needsConnect = p.id === "google_drive" && !isActive;
           const isPending = pending === p.id;
 
           return (
             <button
               key={p.id}
               type="button"
-              disabled={isComingSoon}
+              disabled={isComingSoon || needsConnect}
               onClick={() => handleSelect(p.id)}
               className={cn(
                 "flex items-start gap-3 rounded-xl border p-4 text-left transition-colors",
                 isActive
                   ? "border-primary bg-primary/5"
                   : "border-border bg-card hover:border-primary/40",
-                isComingSoon && "cursor-not-allowed opacity-60",
+                (isComingSoon || needsConnect) && "cursor-not-allowed opacity-60",
               )}
             >
               <span className="text-2xl leading-none">{p.icon}</span>
@@ -69,6 +75,11 @@ export function StorageOnboarding({ onSelected, compact = false }: StorageOnboar
                   {isComingSoon && (
                     <span className="bg-secondary text-muted-foreground rounded-full px-2 py-0.5 text-[10px] font-medium">
                       Coming soon
+                    </span>
+                  )}
+                  {needsConnect && (
+                    <span className="bg-secondary text-muted-foreground rounded-full px-2 py-0.5 text-[10px] font-medium">
+                      Connect below ↓
                     </span>
                   )}
                   {isActive && <Check className="text-primary h-3.5 w-3.5 flex-shrink-0" />}
