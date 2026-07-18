@@ -52,7 +52,7 @@ export const STORAGE_PROVIDERS: StorageProviderMeta[] = [
     label: "Microsoft OneDrive",
     description: "Store your data securely in your Microsoft OneDrive account.",
     icon: "☁️",
-    availability: "coming_soon",
+    availability: "available",
   },
   {
     id: "dropbox",
@@ -93,6 +93,21 @@ export interface LocalAssessmentResults {
  * key-based.
  */
 export interface GoogleDriveFileContents {
+  profile: UserProfile | null;
+  assessment: LocalAssessmentResults | null;
+  recommendations: RecommendationResult | null;
+  updated_at: string;
+}
+
+/**
+ * Shape of the single JSON file OneDriveAdapter reads/writes in the
+ * user's OneDrive app folder (career-intelligence-data.json). Same
+ * fields as GoogleDriveFileContents — kept as a separate type rather
+ * than reused, matching this project's existing norm of small,
+ * intentional duplication across adapter implementations (see the
+ * profile-completeness weighting duplicated in each adapter).
+ */
+export interface OneDriveFileContents {
   profile: UserProfile | null;
   assessment: LocalAssessmentResults | null;
   recommendations: RecommendationResult | null;
