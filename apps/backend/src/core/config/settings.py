@@ -112,6 +112,23 @@ class Settings(BaseSettings):
     # never have to travel through a URL query string.
     GOOGLE_DRIVE_EXCHANGE_TTL_SECONDS: int = 60
 
+    # ── BYOS: OneDrive OAuth broker ──────────────────────────────────────────
+    # Same ticket/exchange broker pattern as Google Drive above — see
+    # docs/architecture/byos.md. One real difference: Microsoft's v2.0
+    # endpoint has no simple per-token revoke API for this flow, so
+    # "disconnect" is handled differently than Google's (see
+    # OneDriveOAuthService.disconnect_note() and the API reference).
+    MICROSOFT_CLIENT_ID: str | None = None
+    MICROSOFT_CLIENT_SECRET: str | None = None
+    MICROSOFT_OAUTH_REDIRECT_URI: str = "http://localhost:8000/api/v1/storage/onedrive/callback"
+    # "common" accepts both personal Microsoft accounts and work/school
+    # (Azure AD) accounts. Use "consumers" to restrict to personal accounts
+    # only if that's ever desired.
+    MICROSOFT_OAUTH_TENANT: str = "common"
+    MICROSOFT_ONEDRIVE_SCOPES: list[str] = ["Files.ReadWrite.AppFolder", "offline_access"]
+    MICROSOFT_ONEDRIVE_TICKET_TTL_SECONDS: int = 300
+    MICROSOFT_ONEDRIVE_EXCHANGE_TTL_SECONDS: int = 60
+
     # ── Background Jobs ───────────────────────────────────────────────────────
     CELERY_BROKER_URL: str = "redis://localhost:6379/1"
     CELERY_RESULT_BACKEND: str = "redis://localhost:6379/2"
