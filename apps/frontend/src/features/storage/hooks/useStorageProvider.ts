@@ -10,6 +10,12 @@ const FALLBACK_PROVIDER_META = STORAGE_PROVIDERS[0]!;
  * storage provider (e.g. the Settings "Storage" tab). Re-renders when
  * the provider changes, unlike calling getActiveStorageAdapter() directly.
  */
+// Providers that require a completed OAuth handshake before they can
+// become the active provider — there are no tokens on first selection,
+// unlike platform/local_device which can be switched to instantly.
+// Add new OAuth-based providers here as they ship (see Dropbox, Phase 9c).
+const PROVIDERS_REQUIRING_CONNECT_FLOW = new Set<StorageProviderId>(["google_drive", "onedrive"]);
+
 export function useStorageProvider() {
   const provider = useStorageProviderStore((s) => s.provider);
   const setProvider = useStorageProviderStore((s) => s.setProvider);
@@ -21,12 +27,12 @@ export function useStorageProvider() {
     const nextMeta = STORAGE_PROVIDERS.find((p) => p.id === next);
     if (!nextMeta || nextMeta.availability !== "available") return;
 
-    // google_drive can't be switched to instantly like platform/local_device
-    // — there are no tokens yet on first selection. GoogleDriveConnect.tsx
-    // completes the OAuth handshake and then calls this with
-    // fromConnectFlow: true once tokens actually exist. A plain picker
-    // click is a no-op for this provider; see StorageOnboarding.tsx.
-    if (next === "google_drive" && !opts?.fromConnectFlow) return;
+    // See PROVIDERS_REQUIRING_CONNECT_FLOW above. GoogleDriveConnect.tsx /
+    // OneDriveConnect.tsx complete the OAuth handshake and then call this
+    // with fromConnectFlow: true once tokens actually exist. A plain
+    // picker click on one of these providers is a no-op; see
+    // StorageOnboarding.tsx.
+    if (PROVIDERS_REQUIRING_CONNECT_FLOW.has(next) && !opts?.fromConnectFlow) return;
 
     setProvider(next);
   }
