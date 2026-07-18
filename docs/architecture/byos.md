@@ -172,10 +172,43 @@ retry via forced refresh if Drive itself returns 401 — covers the case
 where the user revoked access directly from their Google account, outside
 this app).
 
+## OneDrive OAuth flow (Phase 9c backend broker — shipped)
+
+Structurally identical to the Google Drive flow above — same
+ticket/exchange staging in Redis, same reasoning for both secrets. Two
+real differences worth knowing:
+
+1. **Endpoint shapes.** Microsoft's v2.0 identity platform:
+   `https://login.microsoftonline.com/{tenant}/oauth2/v2.0/authorize` and
+   `.../token`, where `{tenant}` is `"common"` by default (accepts both
+   personal Microsoft accounts and work/school Azure AD accounts —
+   `MICROSOFT_OAUTH_TENANT` can be set to `"consumers"` to restrict to
+   personal accounts only). The scope requested is
+   `Files.ReadWrite.AppFolder offline_access` — the Microsoft Graph
+   equivalent of Google's `drive.appdata`, a hidden per-app folder rather
+   than the user's visible OneDrive.
+
+2. **No disconnect leg.** Google's `/revoke` endpoint has no direct
+   Microsoft equivalent for this OAuth flow — there's no simple "take a
+   token, invalidate it" REST call to make. So there's no
+   `/storage/onedrive/disconnect` endpoint and no `revoke_token()` method
+   on `OneDriveOAuthService`. Disconnecting OneDrive is purely
+   client-side: the frontend clears its stored tokens and simply stops
+   calling the Graph API. A user who wants to fully revoke access needs
+   to do that from their Microsoft account's app permissions page
+   directly — this is documented in the setup guide, not hidden.
+
+Both differences are consequences of using Microsoft's actual API
+surface as it exists, not an attempt to make OneDrive look identical to
+Google Drive where it isn't.
+
 ## What's explicitly not in this phase
 
-- OneDrive, Dropbox backends — Phase 9c, same `StorageAdapter` interface,
-  different concrete implementation with OAuth.
+- The OneDrive **frontend**: `OneDriveAdapter.ts`, a Microsoft Graph REST
+  client, token storage, and connect/disconnect UI — the backend broker
+  above is done; this is what's left of Phase 9c's OneDrive half.
+- Dropbox backend (both halves) — same `StorageAdapter` interface,
+  different concrete implementation with OAuth. Not started.
 - Local folder export/import — Phase 9d.
 - Wiring the storage choice into the registration/onboarding flow — for
   now, the choice lives in **Settings → Storage**, reachable after account
@@ -187,9 +220,9 @@ this app).
   completeness, but the Settings UI's "clear data" section is still
   local-device-only; wiring it up for Drive too is a small follow-up, not
   done here to avoid scope creep beyond what was asked.
-- Real-credential end-to-end testing — see
-  [`docs/setup/google-oauth-setup.md`](../setup/google-oauth-setup.md) and
-  the honesty note in `docs/ROADMAP.md`.
+- Real-credential end-to-end testing for either Google Drive or OneDrive
+  — see `docs/setup/google-oauth-setup.md`, the (not yet written)
+  Microsoft equivalent, and the honesty note in `docs/ROADMAP.md`.
 
 ## A note on a bug found and fixed along the way
 

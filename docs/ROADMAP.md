@@ -65,9 +65,17 @@ documented scope limitation of this phase, not a bug (see
   backend calls only. First real-credential smoke test is the user's
   responsibility per the setup guide.
 
-**🔲 Phase 9c — OneDrive + Dropbox backends**
+**🟡 Phase 9c — OneDrive + Dropbox backends (in progress)**
 
 Same pattern as 9b, for the remaining two cloud providers.
+
+- ✅ OneDrive backend OAuth broker shipped: connect/callback/exchange/
+  refresh (no disconnect endpoint — Microsoft has no simple per-token
+  revoke API for this flow; see
+  [`docs/architecture/byos.md`](architecture/byos.md)).
+- 🔲 OneDrive frontend still pending: `OneDriveAdapter.ts`, a Microsoft
+  Graph REST client, token storage, connect/disconnect UI.
+- 🔲 Dropbox not started (either half).
 
 **🔲 Phase 9d — Local folder export/import**
 

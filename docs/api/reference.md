@@ -484,6 +484,62 @@ Response 200:
 { "revoked": true }
 ```
 
+## Storage — OneDrive (BYOS)
+
+Backend broker for the OneDrive BYOS storage option — same design as the
+Google Drive section above, with one real difference: **there is no
+`/disconnect` endpoint.** Microsoft's v2.0 endpoint has no simple
+per-token revoke API for this flow, so disconnecting is handled entirely
+client-side (the frontend clears its stored tokens and stops calling the
+Graph API). See [`docs/architecture/byos.md`](../architecture/byos.md).
+
+### GET /storage/onedrive/connect
+
+Response 200:
+
+```json
+{ "authorize_url": "https://login.microsoftonline.com/common/oauth2/v2.0/authorize?..." }
+```
+
+### GET /storage/onedrive/callback
+
+Microsoft's redirect target, not called by the frontend directly.
+302-redirects to `{FRONTEND_URL}/settings?tab=storage&onedrive_exchange={code}`
+on success, or `...&onedrive_error={reason}` on failure. Excluded from the
+OpenAPI schema.
+
+### POST /storage/onedrive/exchange
+
+Request body:
+
+```json
+{ "exchange_code": "abc123..." }
+```
+
+Response 200:
+
+```json
+{
+  "access_token": "EwB...",
+  "refresh_token": "M.C...",
+  "token_type": "Bearer",
+  "expires_at": "2026-07-16T21:00:00+00:00",
+  "scope": "Files.ReadWrite.AppFolder offline_access"
+}
+```
+
+### POST /storage/onedrive/refresh
+
+Request body:
+
+```json
+{ "refresh_token": "M.C..." }
+```
+
+Response 200: same shape as `/exchange`. Unlike Google, Microsoft always
+rotates the refresh token on use, so `refresh_token` is reliably present
+here (not just "sometimes," as noted for Google Drive above).
+
 ## Error Response Format
 
 All errors return this structure:
