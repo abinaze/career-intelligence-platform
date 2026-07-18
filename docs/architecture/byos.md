@@ -202,11 +202,24 @@ Both differences are consequences of using Microsoft's actual API
 surface as it exists, not an attempt to make OneDrive look identical to
 Google Drive where it isn't.
 
+**Frontend (also shipped):** `OneDriveAdapter.ts` + `oneDriveClient.ts`
+(the raw Graph REST client) + `oneDriveTokens.ts`, following the exact
+same shape as the Google Drive frontend. One genuine simplification:
+Graph addresses the app-folder data file directly by path
+(`special/approot:/career-intelligence-data.json`), so there's no
+separate "find the file's ID first" step the way Drive's client needs —
+a `PUT` to the content endpoint both creates and overwrites. `OneDriveConnect.tsx`
+mirrors `GoogleDriveConnect.tsx`'s connect flow exactly, but its disconnect
+handler never calls the backend — it just clears local tokens, per the
+missing-disconnect-endpoint design above.
+
+`useStorageProvider.selectProvider`'s connect-flow guard (originally
+written just for `google_drive`) was generalized to a
+`PROVIDERS_REQUIRING_CONNECT_FLOW` set so both cloud providers share the
+same guard rather than duplicating the special-case check per provider.
+
 ## What's explicitly not in this phase
 
-- The OneDrive **frontend**: `OneDriveAdapter.ts`, a Microsoft Graph REST
-  client, token storage, and connect/disconnect UI — the backend broker
-  above is done; this is what's left of Phase 9c's OneDrive half.
 - Dropbox backend (both halves) — same `StorageAdapter` interface,
   different concrete implementation with OAuth. Not started.
 - Local folder export/import — Phase 9d.
@@ -215,14 +228,14 @@ Google Drive where it isn't.
   creation. First-run integration is Phase 9e.
 - Migrating existing platform-stored data into local storage, or vice
   versa, when a user switches providers.
-- A "clear my Drive data" affordance in Settings — `GoogleDriveAdapter`
-  implements `clearAll()` (deletes the Drive data file) for interface
-  completeness, but the Settings UI's "clear data" section is still
-  local-device-only; wiring it up for Drive too is a small follow-up, not
-  done here to avoid scope creep beyond what was asked.
-- Real-credential end-to-end testing for either Google Drive or OneDrive
-  — see `docs/setup/google-oauth-setup.md`, the (not yet written)
-  Microsoft equivalent, and the honesty note in `docs/ROADMAP.md`.
+- A "clear my cloud data" affordance in Settings — both `GoogleDriveAdapter`
+  and `OneDriveAdapter` implement `clearAll()` for interface completeness,
+  but the Settings UI's "clear data" section is still local-device-only;
+  wiring it up for the cloud providers too is a small follow-up, not done
+  here to avoid scope creep beyond what was asked.
+- Real-credential end-to-end testing for Google Drive or OneDrive — see
+  `docs/setup/google-oauth-setup.md`, `docs/setup/microsoft-oauth-setup.md`,
+  and the honesty note in `docs/ROADMAP.md`.
 
 ## A note on a bug found and fixed along the way
 

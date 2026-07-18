@@ -69,13 +69,18 @@ documented scope limitation of this phase, not a bug (see
 
 Same pattern as 9b, for the remaining two cloud providers.
 
-- ✅ OneDrive backend OAuth broker shipped: connect/callback/exchange/
-  refresh (no disconnect endpoint — Microsoft has no simple per-token
-  revoke API for this flow; see
-  [`docs/architecture/byos.md`](architecture/byos.md)).
-- 🔲 OneDrive frontend still pending: `OneDriveAdapter.ts`, a Microsoft
-  Graph REST client, token storage, connect/disconnect UI.
+- ✅ OneDrive: backend OAuth broker (connect/callback/exchange/refresh —
+  no disconnect endpoint, Microsoft has no simple per-token revoke API
+  for this flow) and frontend (`OneDriveAdapter.ts`, Graph REST client,
+  token storage, connect/disconnect UI). Requires Microsoft OAuth
+  credentials to actually connect — see
+  [`docs/setup/microsoft-oauth-setup.md`](setup/microsoft-oauth-setup.md).
+  See [`docs/architecture/byos.md`](architecture/byos.md) for the OAuth
+  flow and how it differs from Google Drive's.
 - 🔲 Dropbox not started (either half).
+- Not yet tested against real Microsoft servers (no live credentials
+  were available in the sandbox this was built in) — verified via mocked
+  backend calls and a real frontend build only.
 
 **🔲 Phase 9d — Local folder export/import**
 
