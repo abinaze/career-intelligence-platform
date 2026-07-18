@@ -34,3 +34,23 @@ class GoogleDriveDisconnectResponse(BaseModel):
     """Response from POST /storage/google-drive/disconnect."""
 
     revoked: bool
+
+
+class OneDriveConnectResponse(BaseModel):
+    """Response from GET /storage/onedrive/connect."""
+
+    authorize_url: str
+
+
+class OneDriveTokenResponse(BaseModel):
+    """
+    Response from POST /storage/onedrive/exchange and
+    POST /storage/onedrive/refresh. Same shape/purpose as
+    GoogleDriveTokenResponse — see that docstring.
+    """
+
+    access_token: str
+    refresh_token: str | None = None
+    token_type: str = "Bearer"
+    expires_at: datetime
+    scope: str
