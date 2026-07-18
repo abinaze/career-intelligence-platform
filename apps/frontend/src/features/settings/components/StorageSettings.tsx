@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import { useStorageProvider } from "@/features/storage/hooks/useStorageProvider";
 import { StorageOnboarding } from "@/features/storage/components/StorageOnboarding";
 import { GoogleDriveConnect } from "@/features/storage/components/GoogleDriveConnect";
+import { OneDriveConnect } from "@/features/storage/components/OneDriveConnect";
 
 export function StorageSettings() {
   const { provider, providerMeta, adapter } = useStorageProvider();
@@ -36,6 +37,9 @@ export function StorageSettings() {
           up the post-OAuth-redirect landing regardless of the currently
           active provider. */}
       <GoogleDriveConnect />
+
+      {/* Same for OneDrive. */}
+      <OneDriveConnect />
 
       {/* Local-device-only: clear data */}
       {provider === "local_device" && (
