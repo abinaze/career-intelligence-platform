@@ -46,12 +46,13 @@ export function StorageOnboarding({ onSelected, compact = false }: StorageOnboar
         {providers.map((p) => {
           const isActive = p.id === provider;
           const isComingSoon = p.availability === "coming_soon";
-          // google_drive is genuinely available, but can't be switched to
-          // by a plain picker click — it needs the OAuth connect flow
-          // below (see useStorageProvider.selectProvider). Distinguish
-          // this from "coming soon" rather than lumping them together,
-          // since the underlying reason and the copy shown are different.
-          const needsConnect = p.id === "google_drive" && !isActive;
+          // google_drive and onedrive are genuinely available, but can't
+          // be switched to by a plain picker click — they need the OAuth
+          // connect flow below (see useStorageProvider.selectProvider).
+          // Distinguish this from "coming soon" rather than lumping them
+          // together, since the underlying reason and the copy shown are
+          // different.
+          const needsConnect = (p.id === "google_drive" || p.id === "onedrive") && !isActive;
           const isPending = pending === p.id;
 
           return (
