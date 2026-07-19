@@ -54,3 +54,29 @@ class OneDriveTokenResponse(BaseModel):
     token_type: str = "Bearer"
     expires_at: datetime
     scope: str
+
+
+class DropboxConnectResponse(BaseModel):
+    """Response from GET /storage/dropbox/connect."""
+
+    authorize_url: str
+
+
+class DropboxTokenResponse(BaseModel):
+    """
+    Response from POST /storage/dropbox/exchange and
+    POST /storage/dropbox/refresh. Same shape/purpose as
+    GoogleDriveTokenResponse — see that docstring.
+    """
+
+    access_token: str
+    refresh_token: str | None = None
+    token_type: str = "Bearer"
+    expires_at: datetime
+    scope: str
+
+
+class DropboxDisconnectResponse(BaseModel):
+    """Response from POST /storage/dropbox/disconnect."""
+
+    revoked: bool

@@ -52,3 +52,28 @@ class OneDriveRefreshRequest(BaseModel):
 # frontend just clears its stored tokens) — see
 # docs/architecture/byos.md and the OneDrive section of
 # docs/api/reference.md.
+
+
+class DropboxExchangeRequest(BaseModel):
+    """Body for POST /storage/dropbox/exchange. Same shape/purpose as
+    GoogleDriveExchangeRequest — see that docstring."""
+
+    exchange_code: str = Field(..., min_length=1, max_length=256)
+
+
+class DropboxRefreshRequest(BaseModel):
+    """Body for POST /storage/dropbox/refresh."""
+
+    refresh_token: str = Field(..., min_length=1)
+
+
+class DropboxDisconnectRequest(BaseModel):
+    """Body for POST /storage/dropbox/disconnect.
+
+    Dropbox's revoke endpoint takes the token via the Authorization
+    header of the request the backend makes to Dropbox, not as a body
+    param — but the frontend still needs to tell us *which* token to
+    revoke, hence this request body.
+    """
+
+    token: str = Field(..., min_length=1)
