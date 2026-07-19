@@ -540,6 +540,78 @@ Response 200: same shape as `/exchange`. Unlike Google, Microsoft always
 rotates the refresh token on use, so `refresh_token` is reliably present
 here (not just "sometimes," as noted for Google Drive above).
 
+## Storage — Dropbox (BYOS)
+
+Backend broker for the Dropbox BYOS storage option — same design as the
+Google Drive section above, including a `/disconnect` endpoint (unlike
+OneDrive, Dropbox has a straightforward token-revoke API). See
+[`docs/architecture/byos.md`](../architecture/byos.md).
+
+### GET /storage/dropbox/connect
+
+Response 200:
+
+```json
+{ "authorize_url": "https://www.dropbox.com/oauth2/authorize?..." }
+```
+
+### GET /storage/dropbox/callback
+
+Dropbox's redirect target, not called by the frontend directly.
+302-redirects to `{FRONTEND_URL}/settings?tab=storage&dropbox_exchange={code}`
+on success, or `...&dropbox_error={reason}` on failure. Excluded from the
+OpenAPI schema.
+
+### POST /storage/dropbox/exchange
+
+Request body:
+
+```json
+{ "exchange_code": "abc123..." }
+```
+
+Response 200:
+
+```json
+{
+  "access_token": "sl.B...",
+  "refresh_token": "RT...",
+  "token_type": "Bearer",
+  "expires_at": "2026-07-16T21:00:00+00:00",
+  "scope": "files.content.write files.content.read"
+}
+```
+
+### POST /storage/dropbox/refresh
+
+Request body:
+
+```json
+{ "refresh_token": "RT..." }
+```
+
+Response 200: same shape as `/exchange`. Dropbox doesn't return a new
+`refresh_token` here — the original one keeps working until explicitly
+revoked.
+
+### POST /storage/dropbox/disconnect
+
+Request body:
+
+```json
+{ "token": "sl.B..." }
+```
+
+Pass an **access token**, not a refresh token — Dropbox's revoke endpoint
+authenticates as the token being revoked, unlike Google's (which accepts
+either token type as a body parameter).
+
+Response 200:
+
+```json
+{ "revoked": true }
+```
+
 ## Error Response Format
 
 All errors return this structure:

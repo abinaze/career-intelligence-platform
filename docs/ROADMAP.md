@@ -77,7 +77,13 @@ Same pattern as 9b, for the remaining two cloud providers.
   [`docs/setup/microsoft-oauth-setup.md`](setup/microsoft-oauth-setup.md).
   See [`docs/architecture/byos.md`](architecture/byos.md) for the OAuth
   flow and how it differs from Google Drive's.
-- 🔲 Dropbox not started (either half).
+- ✅ Dropbox: backend OAuth broker shipped (connect/callback/exchange/
+  refresh/disconnect — Dropbox does have a simple token-revoke API,
+  unlike Microsoft, so this one has all 5 endpoints like Google Drive's).
+  See [`docs/architecture/byos.md`](architecture/byos.md) for the
+  Dropbox-specific details (offline access type, revoke-by-access-token).
+- 🔲 Dropbox frontend still pending: `DropboxAdapter.ts`, a Dropbox API
+  v2 REST client, token storage, connect/disconnect UI.
 - Not yet tested against real Microsoft servers (no live credentials
   were available in the sandbox this was built in) — verified via mocked
   backend calls and a real frontend build only.

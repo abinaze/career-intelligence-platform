@@ -129,6 +129,21 @@ class Settings(BaseSettings):
     MICROSOFT_ONEDRIVE_TICKET_TTL_SECONDS: int = 300
     MICROSOFT_ONEDRIVE_EXCHANGE_TTL_SECONDS: int = 60
 
+    # ── BYOS: Dropbox OAuth broker ───────────────────────────────────────────
+    # Same ticket/exchange broker pattern again — see
+    # docs/architecture/byos.md. Unlike OneDrive, Dropbox *does* have a
+    # simple token-revoke endpoint (POST /2/auth/token/revoke), so this
+    # one has a disconnect leg, like Google Drive.
+    DROPBOX_CLIENT_ID: str | None = None
+    DROPBOX_CLIENT_SECRET: str | None = None
+    DROPBOX_OAUTH_REDIRECT_URI: str = "http://localhost:8000/api/v1/storage/dropbox/callback"
+    # Requires an "App folder" access type app in the Dropbox App Console
+    # (sandboxes the app to its own Apps/<AppName> folder — Dropbox's
+    # equivalent of Google's appDataFolder / Microsoft's approot).
+    DROPBOX_SCOPES: list[str] = ["files.content.write", "files.content.read"]
+    DROPBOX_TICKET_TTL_SECONDS: int = 300
+    DROPBOX_EXCHANGE_TTL_SECONDS: int = 60
+
     # ── Background Jobs ───────────────────────────────────────────────────────
     CELERY_BROKER_URL: str = "redis://localhost:6379/1"
     CELERY_RESULT_BACKEND: str = "redis://localhost:6379/2"

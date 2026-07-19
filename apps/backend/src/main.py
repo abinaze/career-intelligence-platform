@@ -18,6 +18,7 @@ from src.api.v1.endpoints.assessment import router as assessment_router
 from src.api.v1.endpoints.auth import router as auth_router
 from src.api.v1.endpoints.careers import router as careers_router
 from src.api.v1.endpoints.chat import router as chat_router
+from src.api.v1.endpoints.dropbox_oauth import router as dropbox_oauth_router
 from src.api.v1.endpoints.onedrive_oauth import router as onedrive_oauth_router
 from src.api.v1.endpoints.profile import router as profile_router
 from src.api.v1.endpoints.stateless import router as stateless_router
@@ -109,6 +110,7 @@ def create_application() -> FastAPI:
     app.include_router(stateless_router, prefix=_settings.API_V1_PREFIX)
     app.include_router(storage_oauth_router, prefix=_settings.API_V1_PREFIX)
     app.include_router(onedrive_oauth_router, prefix=_settings.API_V1_PREFIX)
+    app.include_router(dropbox_oauth_router, prefix=_settings.API_V1_PREFIX)
 
     @app.get("/health", tags=["Health"], include_in_schema=False)
     async def health_check() -> dict[str, str]:
@@ -134,6 +136,11 @@ def create_application() -> FastAPI:
             "onedrive_storage": (
                 "enabled"
                 if _settings.MICROSOFT_CLIENT_ID and _settings.MICROSOFT_CLIENT_SECRET
+                else "disabled"
+            ),
+            "dropbox_storage": (
+                "enabled"
+                if _settings.DROPBOX_CLIENT_ID and _settings.DROPBOX_CLIENT_SECRET
                 else "disabled"
             ),
         }
