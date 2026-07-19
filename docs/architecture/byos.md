@@ -218,24 +218,48 @@ written just for `google_drive`) was generalized to a
 `PROVIDERS_REQUIRING_CONNECT_FLOW` set so both cloud providers share the
 same guard rather than duplicating the special-case check per provider.
 
+## Dropbox OAuth flow (Phase 9c backend broker — shipped)
+
+Same ticket/exchange staging as the other two providers. Closer to
+Google Drive than OneDrive in one specific way: **Dropbox has a real
+token-revoke endpoint** (`POST /2/auth/token/revoke`), so
+`DropboxOAuthService` has a `revoke_token()` method and there's a
+`/storage/dropbox/disconnect` endpoint — unlike OneDrive.
+
+Two Dropbox-specific details:
+
+1. **`token_access_type=offline`** must be passed at the authorize step
+   to get a refresh token back at all — Dropbox defaults to issuing only
+   short-lived access tokens otherwise.
+2. **Revoke authenticates as the token being revoked**, not via a body
+   parameter — the backend calls Dropbox's revoke endpoint with
+   `Authorization: Bearer {access_token}` rather than passing the token
+   in the request body the way Google's does. This means disconnect must
+   be called with an access token specifically, not a refresh token.
+3. Dropbox's "App folder" access type (configured once, when creating the
+   app in the Dropbox App Console — not requested via OAuth scope) is
+   what sandboxes this app to its own `Apps/<AppName>` folder, Dropbox's
+   equivalent of Google's `appDataFolder` / Microsoft's `approot`.
+
 ## What's explicitly not in this phase
 
-- Dropbox backend (both halves) — same `StorageAdapter` interface,
-  different concrete implementation with OAuth. Not started.
+- The Dropbox **frontend**: `DropboxAdapter.ts`, a Dropbox API v2 REST
+  client, token storage, and connect/disconnect UI — the backend broker
+  above is done; this is what's left of Phase 9c.
 - Local folder export/import — Phase 9d.
 - Wiring the storage choice into the registration/onboarding flow — for
   now, the choice lives in **Settings → Storage**, reachable after account
   creation. First-run integration is Phase 9e.
 - Migrating existing platform-stored data into local storage, or vice
   versa, when a user switches providers.
-- A "clear my cloud data" affordance in Settings — both `GoogleDriveAdapter`
+- A "clear my cloud data" affordance in Settings — `GoogleDriveAdapter`
   and `OneDriveAdapter` implement `clearAll()` for interface completeness,
   but the Settings UI's "clear data" section is still local-device-only;
   wiring it up for the cloud providers too is a small follow-up, not done
   here to avoid scope creep beyond what was asked.
-- Real-credential end-to-end testing for Google Drive or OneDrive — see
-  `docs/setup/google-oauth-setup.md`, `docs/setup/microsoft-oauth-setup.md`,
-  and the honesty note in `docs/ROADMAP.md`.
+- Real-credential end-to-end testing for any of the three cloud providers
+  — see the setup guides under `docs/setup/` and the honesty note in
+  `docs/ROADMAP.md`.
 
 ## A note on a bug found and fixed along the way
 
