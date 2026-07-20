@@ -65,9 +65,11 @@ documented scope limitation of this phase, not a bug (see
   backend calls only. First real-credential smoke test is the user's
   responsibility per the setup guide.
 
-**🟡 Phase 9c — OneDrive + Dropbox backends (in progress)**
+**✅ Phase 9c — OneDrive + Dropbox backends and frontends (shipped)**
 
-Same pattern as 9b, for the remaining two cloud providers.
+Same pattern as 9b, for the remaining two cloud providers. All three
+cloud providers (Google Drive, OneDrive, Dropbox) are now fully wired:
+backend OAuth broker + frontend adapter + connect/disconnect UI.
 
 - ✅ OneDrive: backend OAuth broker (connect/callback/exchange/refresh —
   no disconnect endpoint, Microsoft has no simple per-token revoke API
@@ -75,18 +77,21 @@ Same pattern as 9b, for the remaining two cloud providers.
   token storage, connect/disconnect UI). Requires Microsoft OAuth
   credentials to actually connect — see
   [`docs/setup/microsoft-oauth-setup.md`](setup/microsoft-oauth-setup.md).
-  See [`docs/architecture/byos.md`](architecture/byos.md) for the OAuth
-  flow and how it differs from Google Drive's.
-- ✅ Dropbox: backend OAuth broker shipped (connect/callback/exchange/
-  refresh/disconnect — Dropbox does have a simple token-revoke API,
-  unlike Microsoft, so this one has all 5 endpoints like Google Drive's).
-  See [`docs/architecture/byos.md`](architecture/byos.md) for the
-  Dropbox-specific details (offline access type, revoke-by-access-token).
-- 🔲 Dropbox frontend still pending: `DropboxAdapter.ts`, a Dropbox API
-  v2 REST client, token storage, connect/disconnect UI.
-- Not yet tested against real Microsoft servers (no live credentials
-  were available in the sandbox this was built in) — verified via mocked
-  backend calls and a real frontend build only.
+- ✅ Dropbox: backend OAuth broker (connect/callback/exchange/refresh/
+  disconnect — Dropbox does have a simple token-revoke API, unlike
+  Microsoft, so this one has all 5 endpoints like Google Drive's) and
+  frontend (`DropboxAdapter.ts`, Dropbox API v2 REST client, token
+  storage, connect/disconnect UI with a real backend-revoke disconnect).
+  Requires Dropbox app credentials to actually connect — see
+  [`docs/setup/dropbox-setup.md`](setup/dropbox-setup.md).
+- See [`docs/architecture/byos.md`](architecture/byos.md) for the OAuth
+  flow details and how each provider differs from Google Drive's.
+- Not yet tested against real Microsoft or Dropbox servers (no live
+  credentials were available in the sandbox this was built in) —
+  verified via mocked backend calls and real frontend builds
+  (`tsc`/`eslint`/`next build`) only. First real-credential smoke test
+  for all three providers is the user's responsibility per their
+  respective setup guides.
 
 **🔲 Phase 9d — Local folder export/import**
 
