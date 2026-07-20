@@ -7,6 +7,7 @@ import { useStorageProvider } from "@/features/storage/hooks/useStorageProvider"
 import { StorageOnboarding } from "@/features/storage/components/StorageOnboarding";
 import { GoogleDriveConnect } from "@/features/storage/components/GoogleDriveConnect";
 import { OneDriveConnect } from "@/features/storage/components/OneDriveConnect";
+import { DropboxConnect } from "@/features/storage/components/DropboxConnect";
 
 export function StorageSettings() {
   const { provider, providerMeta, adapter } = useStorageProvider();
@@ -40,6 +41,9 @@ export function StorageSettings() {
 
       {/* Same for OneDrive. */}
       <OneDriveConnect />
+
+      {/* Same for Dropbox. */}
+      <DropboxConnect />
 
       {/* Local-device-only: clear data */}
       {provider === "local_device" && (
