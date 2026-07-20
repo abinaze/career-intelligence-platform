@@ -33,6 +33,13 @@ TEST_DATABASE_URL = os.getenv(
     "postgresql+asyncpg://cip_user:cip_password@localhost:5432/cip_test",
 )
 
+# Passed through to asyncpg.connect(): fail fast and loud if Postgres is
+# unreachable or a query hangs (e.g. a stuck lock from a prior crashed
+# run), rather than blocking the whole test session with no upper bound.
+# Added after a CI run hung for 4+ hours with no clear error — these
+# engines previously had no timeout at all.
+_ENGINE_CONNECT_ARGS = {"timeout": 10, "command_timeout": 10}
+
 
 def pytest_configure(config: Any) -> None:
     """Configure structlog to use stdlib so logger.name works in tests."""
@@ -52,7 +59,9 @@ def pytest_configure(config: Any) -> None:
 @pytest_asyncio.fixture(scope="session")
 async def setup_database():  # type: ignore[no-untyped-def]
     """Create all tables once per session, drop after."""
-    engine = create_async_engine(TEST_DATABASE_URL, poolclass=NullPool)
+    engine = create_async_engine(
+        TEST_DATABASE_URL, poolclass=NullPool, connect_args=_ENGINE_CONNECT_ARGS
+    )
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
     yield
@@ -64,7 +73,9 @@ async def setup_database():  # type: ignore[no-untyped-def]
 @pytest_asyncio.fixture(autouse=True)
 async def clean_tables(setup_database: None) -> AsyncGenerator[None, None]:
     """Truncate all tables before each test to ensure isolation."""
-    engine = create_async_engine(TEST_DATABASE_URL, poolclass=NullPool)
+    engine = create_async_engine(
+        TEST_DATABASE_URL, poolclass=NullPool, connect_args=_ENGINE_CONNECT_ARGS
+    )
     async with engine.begin() as conn:
         await conn.execute(
             text(
@@ -79,7 +90,9 @@ async def clean_tables(setup_database: None) -> AsyncGenerator[None, None]:
 @pytest_asyncio.fixture
 async def db_session(setup_database: None) -> AsyncGenerator[AsyncSession, None]:
     """Provide a fresh database session per test."""
-    engine = create_async_engine(TEST_DATABASE_URL, poolclass=NullPool)
+    engine = create_async_engine(
+        TEST_DATABASE_URL, poolclass=NullPool, connect_args=_ENGINE_CONNECT_ARGS
+    )
     session_factory = async_sessionmaker(
         engine,
         expire_on_commit=False,

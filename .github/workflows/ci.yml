@@ -18,6 +18,7 @@ jobs:
   frontend-lint:
     name: Frontend — Lint and Type Check
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -40,6 +41,7 @@ jobs:
   backend-lint:
     name: Backend — Lint and Type Check
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     defaults:
       run:
         working-directory: apps/backend
@@ -60,6 +62,7 @@ jobs:
   backend-test:
     name: Backend — Tests
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     defaults:
       run:
         working-directory: apps/backend

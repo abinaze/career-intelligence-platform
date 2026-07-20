@@ -218,7 +218,7 @@ written just for `google_drive`) was generalized to a
 `PROVIDERS_REQUIRING_CONNECT_FLOW` set so both cloud providers share the
 same guard rather than duplicating the special-case check per provider.
 
-## Dropbox OAuth flow (Phase 9c backend broker — shipped)
+## Dropbox OAuth flow (Phase 9c — shipped, backend + frontend)
 
 Same ticket/exchange staging as the other two providers. Closer to
 Google Drive than OneDrive in one specific way: **Dropbox has a real
@@ -241,22 +241,39 @@ Two Dropbox-specific details:
    what sandboxes this app to its own `Apps/<AppName>` folder, Dropbox's
    equivalent of Google's `appDataFolder` / Microsoft's `approot`.
 
+**Frontend (also shipped):** `DropboxAdapter.ts` + `dropboxClient.ts` +
+`dropboxTokens.ts`, same shape as the other two cloud adapters.
+`DropboxConnect.tsx` mirrors `GoogleDriveConnect.tsx` exactly, including a
+real backend disconnect call (unlike `OneDriveConnect.tsx`, which is
+client-only) — Dropbox has a genuine revoke endpoint. Structurally,
+`DropboxAdapter` is closer to `OneDriveAdapter` than `GoogleDriveAdapter`:
+Dropbox's "App folder" access type means every path is already sandboxed
+to the app, so there's no file-ID lookup step, same simplification Graph
+gets from its path-addressable API.
+
+`PROVIDERS_REQUIRING_CONNECT_FLOW` (the guard added when OneDrive
+shipped) and `StorageOnboarding`'s `needsConnect` check both now cover all
+three cloud providers.
+
+This closes out the three-provider set for Phase 9c — Google Drive,
+OneDrive, and Dropbox are all fully wired end-to-end (backend broker +
+frontend adapter + connect UI), none of them smoke-tested against real
+provider servers yet (see the honesty notes in `docs/ROADMAP.md` and
+each `docs/setup/*.md` guide).
+
 ## What's explicitly not in this phase
 
-- The Dropbox **frontend**: `DropboxAdapter.ts`, a Dropbox API v2 REST
-  client, token storage, and connect/disconnect UI — the backend broker
-  above is done; this is what's left of Phase 9c.
 - Local folder export/import — Phase 9d.
 - Wiring the storage choice into the registration/onboarding flow — for
   now, the choice lives in **Settings → Storage**, reachable after account
   creation. First-run integration is Phase 9e.
 - Migrating existing platform-stored data into local storage, or vice
   versa, when a user switches providers.
-- A "clear my cloud data" affordance in Settings — `GoogleDriveAdapter`
-  and `OneDriveAdapter` implement `clearAll()` for interface completeness,
-  but the Settings UI's "clear data" section is still local-device-only;
-  wiring it up for the cloud providers too is a small follow-up, not done
-  here to avoid scope creep beyond what was asked.
+- A "clear my cloud data" affordance in Settings — all three cloud
+  adapters implement `clearAll()` for interface completeness, but the
+  Settings UI's "clear data" section is still local-device-only; wiring
+  it up for the cloud providers too is a small follow-up, not done here
+  to avoid scope creep beyond what was asked.
 - Real-credential end-to-end testing for any of the three cloud providers
   — see the setup guides under `docs/setup/` and the honesty note in
   `docs/ROADMAP.md`.

@@ -59,7 +59,7 @@ export const STORAGE_PROVIDERS: StorageProviderMeta[] = [
     label: "Dropbox",
     description: "Store your data securely in your Dropbox account.",
     icon: "📦",
-    availability: "coming_soon",
+    availability: "available",
   },
   {
     id: "local_folder",
@@ -108,6 +108,20 @@ export interface GoogleDriveFileContents {
  * profile-completeness weighting duplicated in each adapter).
  */
 export interface OneDriveFileContents {
+  profile: UserProfile | null;
+  assessment: LocalAssessmentResults | null;
+  recommendations: RecommendationResult | null;
+  updated_at: string;
+}
+
+/**
+ * Shape of the single JSON file DropboxAdapter reads/writes at
+ * /career-intelligence-data.json within the app's sandboxed "App folder"
+ * space. Same fields as GoogleDriveFileContents/OneDriveFileContents —
+ * kept separate rather than shared, matching this project's existing
+ * norm of small, intentional duplication across adapter implementations.
+ */
+export interface DropboxFileContents {
   profile: UserProfile | null;
   assessment: LocalAssessmentResults | null;
   recommendations: RecommendationResult | null;

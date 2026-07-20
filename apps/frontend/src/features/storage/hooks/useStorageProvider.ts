@@ -14,7 +14,11 @@ const FALLBACK_PROVIDER_META = STORAGE_PROVIDERS[0]!;
 // become the active provider — there are no tokens on first selection,
 // unlike platform/local_device which can be switched to instantly.
 // Add new OAuth-based providers here as they ship (see Dropbox, Phase 9c).
-const PROVIDERS_REQUIRING_CONNECT_FLOW = new Set<StorageProviderId>(["google_drive", "onedrive"]);
+const PROVIDERS_REQUIRING_CONNECT_FLOW = new Set<StorageProviderId>([
+  "google_drive",
+  "onedrive",
+  "dropbox",
+]);
 
 export function useStorageProvider() {
   const provider = useStorageProviderStore((s) => s.provider);
