@@ -1,4 +1,5 @@
 import type { StorageAdapter, StorageProviderId } from "../types";
+import { DropboxAdapter } from "./DropboxAdapter";
 import { GoogleDriveAdapter } from "./GoogleDriveAdapter";
 import { LocalDeviceAdapter } from "./LocalDeviceAdapter";
 import { OneDriveAdapter } from "./OneDriveAdapter";
@@ -9,12 +10,13 @@ const platformAdapter = new PlatformAdapter();
 const localDeviceAdapter = new LocalDeviceAdapter();
 const googleDriveAdapter = new GoogleDriveAdapter();
 const oneDriveAdapter = new OneDriveAdapter();
+const dropboxAdapter = new DropboxAdapter();
 
 /**
  * Resolve a StorageAdapter instance for a given provider ID.
- * Providers without a functional adapter yet (dropbox, local_folder)
- * fall back to the platform adapter — the UI layer prevents selecting
- * them until their Phase 9c/9d work lands.
+ * Providers without a functional adapter yet (local_folder) fall back
+ * to the platform adapter — the UI layer prevents selecting them until
+ * their Phase 9d work lands.
  */
 function resolveAdapter(providerId: StorageProviderId): StorageAdapter {
   switch (providerId) {
@@ -24,6 +26,8 @@ function resolveAdapter(providerId: StorageProviderId): StorageAdapter {
       return googleDriveAdapter;
     case "onedrive":
       return oneDriveAdapter;
+    case "dropbox":
+      return dropboxAdapter;
     case "platform":
     default:
       return platformAdapter;
