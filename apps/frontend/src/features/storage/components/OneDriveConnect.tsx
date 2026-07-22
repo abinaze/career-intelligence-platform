@@ -5,6 +5,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Check, Loader2, LogOut } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useStorageProvider } from "../hooks/useStorageProvider";
+import { describeMigration } from "../lib/migrateProviderData";
 import { oneDriveOAuthApi } from "../api/oneDriveOAuth.api";
 import {
   clearOneDriveTokens,
@@ -49,6 +50,7 @@ export function OneDriveConnect() {
   const [state, setState] = useState<ConnectionState>("checking");
   const [error, setError] = useState<string | null>(null);
   const [isDisconnecting, setIsDisconnecting] = useState(false);
+  const [migrationNote, setMigrationNote] = useState<string | null>(null);
 
   function clearRedirectParams(): void {
     const params = new URLSearchParams(searchParams.toString());
@@ -70,7 +72,8 @@ export function OneDriveConnect() {
       try {
         const tokens = await oneDriveOAuthApi.claimExchange(code);
         await setOneDriveTokens(tokens);
-        selectProvider("onedrive", { fromConnectFlow: true });
+        const migration = await selectProvider("onedrive", { fromConnectFlow: true });
+        setMigrationNote(describeMigration(migration));
         setState("connected");
       } catch {
         setError(
@@ -116,7 +119,7 @@ export function OneDriveConnect() {
       // No backend call here — see the module docstring above for why.
       await clearOneDriveTokens();
       if (provider === "onedrive") {
-        selectProvider("platform");
+        await selectProvider("platform");
       }
       setState("not_connected");
     } finally {
@@ -183,6 +186,12 @@ export function OneDriveConnect() {
           ? "Your career data is stored in a private, hidden file in your own OneDrive."
           : "Connect your OneDrive to store your career data there instead of on our servers."}
       </p>
+
+      {migrationNote && (
+        <p className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-300">
+          {migrationNote}
+        </p>
+      )}
 
       {error && (
         <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-800 dark:border-red-900 dark:bg-red-950/40 dark:text-red-300">

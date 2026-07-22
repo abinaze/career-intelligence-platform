@@ -5,6 +5,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Check, Loader2, LogOut } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useStorageProvider } from "../hooks/useStorageProvider";
+import { describeMigration } from "../lib/migrateProviderData";
 import { dropboxOAuthApi } from "../api/dropboxOAuth.api";
 import {
   clearDropboxTokens,
@@ -48,6 +49,7 @@ export function DropboxConnect() {
   const [state, setState] = useState<ConnectionState>("checking");
   const [error, setError] = useState<string | null>(null);
   const [isDisconnecting, setIsDisconnecting] = useState(false);
+  const [migrationNote, setMigrationNote] = useState<string | null>(null);
 
   function clearRedirectParams(): void {
     const params = new URLSearchParams(searchParams.toString());
@@ -69,7 +71,8 @@ export function DropboxConnect() {
       try {
         const tokens = await dropboxOAuthApi.claimExchange(code);
         await setDropboxTokens(tokens);
-        selectProvider("dropbox", { fromConnectFlow: true });
+        const migration = await selectProvider("dropbox", { fromConnectFlow: true });
+        setMigrationNote(describeMigration(migration));
         setState("connected");
       } catch {
         setError(
@@ -119,7 +122,7 @@ export function DropboxConnect() {
     } finally {
       await clearDropboxTokens();
       if (provider === "dropbox") {
-        selectProvider("platform");
+        await selectProvider("platform");
       }
       setState("not_connected");
       setIsDisconnecting(false);
@@ -185,6 +188,12 @@ export function DropboxConnect() {
           ? "Your career data is stored in a private, hidden file in your own Dropbox."
           : "Connect your Dropbox to store your career data there instead of on our servers."}
       </p>
+
+      {migrationNote && (
+        <p className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-300">
+          {migrationNote}
+        </p>
+      )}
 
       {error && (
         <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-800 dark:border-red-900 dark:bg-red-950/40 dark:text-red-300">
