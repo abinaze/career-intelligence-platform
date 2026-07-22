@@ -17,11 +17,13 @@ export function useAuth() {
     router.push("/dashboard");
   }
 
-  async function register(
-    credentials: RegisterCredentials,
-  ): Promise<void> {
+  async function register(credentials: RegisterCredentials): Promise<void> {
     await store.register(credentials);
-    router.push("/dashboard");
+    // Only fresh registrations get funneled through storage onboarding
+    // — returning users (login()) go straight to the dashboard, same as
+    // before. The onboarding page's own Continue/Skip actions both land
+    // on /dashboard, so this is a one-time detour, not a gate.
+    router.push("/onboarding/storage");
   }
 
   async function logout(): Promise<void> {
