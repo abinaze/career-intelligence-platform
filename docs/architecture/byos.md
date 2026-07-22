@@ -320,12 +320,49 @@ from it. `migrateStorageData()` catches that and reports
 `attempted: false` rather than throwing and breaking the disconnect
 button.
 
+## Manual export/import (Phase 9d — shipped)
+
+`docs/ROADMAP.md` describes this phase as "manual export-to-file and
+import-from-file support" — and that's exactly what shipped, not a sixth
+`StorageAdapter`. Two design decisions worth being explicit about:
+
+**`local_folder` stays `coming_soon`.** The alternative — a true live
+"Local Folder" adapter backed by the browser's File System Access API
+(`showDirectoryPicker()`) — was considered and deliberately not built:
+it's Chromium-only (no Firefox/Safari support), and directory-handle
+permissions don't reliably persist across sessions, so a "connected"
+folder adapter would silently re-prompt or fail on reload in ways the
+other four adapters never do. Shipping that as a sixth peer to Google
+Drive/OneDrive/Dropbox would have meant a materially less reliable
+experience wearing the same UI as adapters that don't have this problem.
+`local_folder`'s `STORAGE_PROVIDERS` entry is unchanged — still marked
+`coming_soon` — because nothing here makes it selectable as an active
+provider.
+
+**Export/import is built entirely on Phase 9e's snapshot primitives.**
+`buildExportFile()` calls whichever adapter is currently active's
+`exportSnapshot()` and wraps it in a small versioned envelope
+(`format_version`, `exported_at`, `exported_from`) before triggering a
+browser download. Import does the reverse: parse and structurally
+validate the file (`parseImportFile()` — shallow validation only; a
+malformed inner shape surfaces as a clear failure from the adapter's
+own `restoreSnapshot()` rather than being caught twice), confirm with
+the user since it overwrites current data (same two-step
+Cancel/confirm pattern as `DangerZone.tsx` and the local-device
+"Clear data" section, not a native `window.confirm()`), then call
+`restoreSnapshot()` on the active adapter. Same one-directional gap
+as migration: importing into platform storage restores the profile but
+never the assessment (`describeImportResult()`, wording distinct from
+`migrateProviderData.ts`'s `describeMigration()` since "restored from a
+file you picked" reads differently than "moved when you switched
+providers," even though both wrap the same `RestoreSnapshotResult`).
+
 ## What's explicitly not in this phase
 
-- Local folder export/import — Phase 9d.
 - Real-credential end-to-end testing for any of the three cloud providers
   — see the setup guides under `docs/setup/` and the honesty note in
-  `docs/ROADMAP.md`.
+  `docs/ROADMAP.md`. Still the single biggest open gap in the whole BYOS
+  effort.
 - A "clear my cloud data" affordance in Settings — all three cloud
   adapters implement `clearAll()` for interface completeness, but the
   Settings UI's "clear data" section is still local-device-only; wiring
@@ -333,11 +370,14 @@ button.
   to avoid scope creep beyond what was asked.
 - A backend endpoint to set a precomputed assessment result directly —
   would close the platform-restore gap above, but is real backend work,
-  not something the frontend migration layer can work around.
-- Any UI for reviewing *before* a migration happens (e.g. "here's what
-  will move, confirm?") — migration currently just happens as part of
-  the switch, silently succeeding or reporting via the status message
-  after the fact.
+  not something the frontend migration/import layer can work around.
+- Any UI for reviewing *before* a migration or import happens (e.g.
+  "here's what will change, confirm?" beyond the destructive-overwrite
+  warning import already has) — both currently just report what
+  happened after the fact via a status message.
+- A true live "Local Folder" adapter — see above; not ruled out forever,
+  just not what "Phase 9d" turned out to mean once the File System
+  Access API's real constraints were weighed against it.
 
 ## A note on a bug found and fixed along the way
 

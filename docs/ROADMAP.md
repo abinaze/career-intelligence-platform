@@ -93,10 +93,16 @@ backend OAuth broker + frontend adapter + connect/disconnect UI.
   for all three providers is the user's responsibility per their
   respective setup guides.
 
-**🔲 Phase 9d — Local folder export/import**
+**✅ Phase 9d — Manual export/import (shipped)**
 
-Manual export-to-file and import-from-file support, for users who want
-full offline control without a cloud account.
+Export-to-file and import-from-file, available in Settings → Storage
+regardless of which provider is active. Built entirely on Phase 9e's
+`exportSnapshot()`/`restoreSnapshot()` — not a sixth `StorageAdapter`.
+`local_folder` stays `coming_soon`: a true live folder adapter would need
+the File System Access API, which is Chromium-only and doesn't reliably
+persist directory permissions across sessions — a worse, inconsistent
+experience under the same UI as the other four adapters. See
+[`docs/architecture/byos.md`](architecture/byos.md) for the full reasoning.
 
 **✅ Phase 9e — Onboarding integration + provider switching (shipped)**
 
@@ -128,7 +134,12 @@ glossed over:
   this model — this is a deliberate trade-off of the privacy-first design,
   not an oversight.
 
-Progress on 9b–9e will be tracked via issues labeled `phase-9-byos`.
+All of Phase 9 (9a–9e) has shipped. The one gap that spans all of it:
+none of the three cloud providers (Google Drive, OneDrive, Dropbox) have
+been tested against a real account — every phase was verified via mocked
+HTTP calls, real type-checks, and real production builds, but never a
+live OAuth round-trip. That's the next thing to actually do here, ahead
+of any new phase.
 
 ### Phase 10 — Free-tier production deployment
 
