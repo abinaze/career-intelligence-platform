@@ -8,6 +8,7 @@ import { StorageOnboarding } from "@/features/storage/components/StorageOnboardi
 import { GoogleDriveConnect } from "@/features/storage/components/GoogleDriveConnect";
 import { OneDriveConnect } from "@/features/storage/components/OneDriveConnect";
 import { DropboxConnect } from "@/features/storage/components/DropboxConnect";
+import { DataExportImport } from "@/features/storage/components/DataExportImport";
 
 export function StorageSettings() {
   const { provider, providerMeta, adapter } = useStorageProvider();
@@ -44,6 +45,9 @@ export function StorageSettings() {
 
       {/* Same for Dropbox. */}
       <DropboxConnect />
+
+      {/* Manual backup/restore — works against whichever provider is active. */}
+      <DataExportImport />
 
       {/* Local-device-only: clear data */}
       {provider === "local_device" && (
