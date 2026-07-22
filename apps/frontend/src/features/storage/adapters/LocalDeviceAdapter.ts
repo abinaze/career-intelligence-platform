@@ -1,7 +1,12 @@
 import type { StartAssessmentResponse } from "@/features/assessment/types";
 import type { ProfileUpdate, RecommendationResult, UserProfile } from "@/features/careers/types";
 import { mapRawQuestion, statelessApi } from "../api/stateless.api";
-import type { LocalAssessmentResults, StorageAdapter } from "../types";
+import type {
+  LocalAssessmentResults,
+  RestoreSnapshotResult,
+  StorageAdapter,
+  StorageSnapshot,
+} from "../types";
 import { idbClearAll, idbGet, idbSet } from "./indexedDb";
 
 const KEYS = {
@@ -165,6 +170,29 @@ export class LocalDeviceAdapter implements StorageAdapter {
 
     await idbSet(KEYS.recommendations, result);
     return result;
+  }
+
+  async exportSnapshot(): Promise<StorageSnapshot> {
+    const [profile, assessment] = await Promise.all([
+      this.getProfile(),
+      this.getLatestAssessmentResults(),
+    ]);
+    return { profile, assessment };
+  }
+
+  async restoreSnapshot(snapshot: StorageSnapshot): Promise<RestoreSnapshotResult> {
+    if (snapshot.assessment) {
+      await idbSet(KEYS.assessment, snapshot.assessment);
+    }
+    if (snapshot.profile) {
+      const merged: UserProfile = { ...snapshot.profile };
+      merged.completeness_score = computeLocalCompleteness(merged, snapshot.assessment !== null);
+      await idbSet(KEYS.profile, merged);
+    }
+    return {
+      profileRestored: snapshot.profile !== null,
+      assessmentRestored: snapshot.assessment !== null,
+    };
   }
 
   async clearAll(): Promise<void> {

@@ -2,7 +2,13 @@ import type { StartAssessmentResponse } from "@/features/assessment/types";
 import type { ProfileUpdate, RecommendationResult, UserProfile } from "@/features/careers/types";
 import { oneDriveOAuthApi } from "../api/oneDriveOAuth.api";
 import { mapRawQuestion, statelessApi } from "../api/stateless.api";
-import type { LocalAssessmentResults, OneDriveFileContents, StorageAdapter } from "../types";
+import type {
+  LocalAssessmentResults,
+  OneDriveFileContents,
+  RestoreSnapshotResult,
+  StorageAdapter,
+  StorageSnapshot,
+} from "../types";
 import { OneDriveApiError, oneDriveClient } from "./oneDriveClient";
 import { getOneDriveTokens, setOneDriveTokens } from "./oneDriveTokens";
 
@@ -255,6 +261,27 @@ export class OneDriveAdapter implements StorageAdapter {
 
     await this.writeFile({ recommendations: result }, current);
     return result;
+  }
+
+  async exportSnapshot(): Promise<StorageSnapshot> {
+    const file = await this.readFile();
+    return { profile: file.profile, assessment: file.assessment };
+  }
+
+  async restoreSnapshot(snapshot: StorageSnapshot): Promise<RestoreSnapshotResult> {
+    const current = await this.readFile();
+    const assessment = snapshot.assessment ?? current.assessment;
+    const profile = snapshot.profile
+      ? {
+          ...snapshot.profile,
+          completeness_score: computeCompleteness(snapshot.profile, assessment !== null),
+        }
+      : current.profile;
+    await this.writeFile({ profile, assessment }, current);
+    return {
+      profileRestored: snapshot.profile !== null,
+      assessmentRestored: snapshot.assessment !== null,
+    };
   }
 
   async clearAll(): Promise<void> {
