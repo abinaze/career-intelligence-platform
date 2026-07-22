@@ -261,22 +261,83 @@ frontend adapter + connect UI), none of them smoke-tested against real
 provider servers yet (see the honesty notes in `docs/ROADMAP.md` and
 each `docs/setup/*.md` guide).
 
+## Onboarding integration and provider-switching migration (Phase 9e — shipped)
+
+Two things that were previously true and are no longer:
+
+**The storage choice is now part of registration.** `useAuth.register()`
+redirects to `/onboarding/storage` instead of straight to `/dashboard` —
+a one-time detour, not a gate. The page renders the same picker and
+connect panels as Settings → Storage, and its only action is "Continue
+to Dashboard," which works identically whether or not anything was
+changed from the default (`platform`). Logging in (as opposed to
+registering) still goes straight to `/dashboard`; only a fresh signup
+sees this page, and only once.
+
+**Switching providers now actually moves data instead of stranding it.**
+Every `StorageAdapter` gained two new methods:
+
+```ts
+exportSnapshot(): Promise<StorageSnapshot>;
+restoreSnapshot(snapshot: StorageSnapshot): Promise<RestoreSnapshotResult>;
+```
+
+`useStorageProvider.selectProvider()` is now async: before flipping the
+active provider, it calls `migrateStorageData()`
+(`features/storage/lib/migrateProviderData.ts`), which exports a
+snapshot from the current adapter and restores it into the target one.
+`RestoreSnapshotResult` reports what actually happened
+(`profileRestored`, `assessmentRestored`) rather than a single
+success/fail flag, because it isn't always both — see below.
+
+**`StorageSnapshot` deliberately excludes recommendations.** They're a
+derived cache with no independent value — trivially recomputable from
+the assessment via `getRecommendations()` — and none of the five
+adapters expose a raw "read the cached value without recomputing"
+getter. Adding one to all five purely to save a single backend
+round-trip after a rare, deliberate action wasn't worth the surface
+area.
+
+**One real, one-directional gap: migrating an assessment *into* platform
+storage isn't possible.** The backend has no endpoint to set a
+precomputed assessment result directly — only `/assessment/start` +
+`/assessment/submit`, which take raw Likert responses (never retained,
+only their computed scores) and always run a fresh scoring pass. So
+`PlatformAdapter.restoreSnapshot()` restores the profile fine but always
+reports `assessmentRestored: false`. Every other direction (platform →
+any BYOS adapter, BYOS → BYOS) restores both fully. The onboarding page
+and Settings' provider picker both surface this honestly via
+`describeMigration()` ("Your profile moved, but your assessment
+couldn't be — you'll need to retake it here.") rather than silently
+losing data or claiming a migration that didn't fully happen.
+
+**Migration is defensive against the disconnect flow.** The three
+`*Connect.tsx` disconnect handlers clear stored tokens *before* calling
+`selectProvider("platform")` (so a failed revoke call never leaves the
+UI showing "connected" with dead tokens) — which means the source
+adapter is already inaccessible by the time migration would try to read
+from it. `migrateStorageData()` catches that and reports
+`attempted: false` rather than throwing and breaking the disconnect
+button.
+
 ## What's explicitly not in this phase
 
 - Local folder export/import — Phase 9d.
-- Wiring the storage choice into the registration/onboarding flow — for
-  now, the choice lives in **Settings → Storage**, reachable after account
-  creation. First-run integration is Phase 9e.
-- Migrating existing platform-stored data into local storage, or vice
-  versa, when a user switches providers.
+- Real-credential end-to-end testing for any of the three cloud providers
+  — see the setup guides under `docs/setup/` and the honesty note in
+  `docs/ROADMAP.md`.
 - A "clear my cloud data" affordance in Settings — all three cloud
   adapters implement `clearAll()` for interface completeness, but the
   Settings UI's "clear data" section is still local-device-only; wiring
   it up for the cloud providers too is a small follow-up, not done here
   to avoid scope creep beyond what was asked.
-- Real-credential end-to-end testing for any of the three cloud providers
-  — see the setup guides under `docs/setup/` and the honesty note in
-  `docs/ROADMAP.md`.
+- A backend endpoint to set a precomputed assessment result directly —
+  would close the platform-restore gap above, but is real backend work,
+  not something the frontend migration layer can work around.
+- Any UI for reviewing *before* a migration happens (e.g. "here's what
+  will move, confirm?") — migration currently just happens as part of
+  the switch, silently succeeding or reporting via the status message
+  after the fact.
 
 ## A note on a bug found and fixed along the way
 
