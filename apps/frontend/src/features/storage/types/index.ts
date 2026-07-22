@@ -128,6 +128,37 @@ export interface DropboxFileContents {
   updated_at: string;
 }
 
+// ── Migration (Phase 9e) ────────────────────────────────────────────────────
+
+/**
+ * Portable snapshot of a user's data, used to move it from one storage
+ * adapter to another when switching providers (see
+ * features/storage/lib/migrateProviderData.ts).
+ *
+ * Deliberately excludes recommendations: they're a derived cache with no
+ * independent value — recomputable for free from the assessment via
+ * getRecommendations() — and none of the five adapters expose a raw
+ * "read the cached value without recomputing" getter, so including them
+ * here would mean adding a new method to every adapter purely to save
+ * one backend round-trip after a rare, deliberate action.
+ */
+export interface StorageSnapshot {
+  profile: UserProfile | null;
+  assessment: LocalAssessmentResults | null;
+}
+
+/**
+ * What actually got restored. Not just a success/failure flag — some
+ * adapters can only partially restore a snapshot (see PlatformAdapter,
+ * which has no backend endpoint to set a precomputed assessment result
+ * directly). Callers should use this to tell the user the truth rather
+ * than assume a migration was complete.
+ */
+export interface RestoreSnapshotResult {
+  profileRestored: boolean;
+  assessmentRestored: boolean;
+}
+
 // ── Storage adapter interface ─────────────────────────────────────────────────
 
 export interface StorageAdapter {
@@ -144,6 +175,11 @@ export interface StorageAdapter {
   getLatestAssessmentResults(): Promise<LocalAssessmentResults | null>;
 
   getRecommendations(topK?: number): Promise<RecommendationResult>;
+
+  /** Read this adapter's data as a portable snapshot, for migration to another adapter. */
+  exportSnapshot(): Promise<StorageSnapshot>;
+  /** Write a snapshot exported from another adapter into this one. See RestoreSnapshotResult. */
+  restoreSnapshot(snapshot: StorageSnapshot): Promise<RestoreSnapshotResult>;
 
   /** Permanently erase all data held by this adapter. Irreversible. */
   clearAll(): Promise<void>;
