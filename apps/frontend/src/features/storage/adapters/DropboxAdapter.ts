@@ -2,7 +2,13 @@ import type { StartAssessmentResponse } from "@/features/assessment/types";
 import type { ProfileUpdate, RecommendationResult, UserProfile } from "@/features/careers/types";
 import { dropboxOAuthApi } from "../api/dropboxOAuth.api";
 import { mapRawQuestion, statelessApi } from "../api/stateless.api";
-import type { DropboxFileContents, LocalAssessmentResults, StorageAdapter } from "../types";
+import type {
+  DropboxFileContents,
+  LocalAssessmentResults,
+  RestoreSnapshotResult,
+  StorageAdapter,
+  StorageSnapshot,
+} from "../types";
 import { DropboxApiError, dropboxClient } from "./dropboxClient";
 import { getDropboxTokens, setDropboxTokens } from "./dropboxTokens";
 
@@ -253,6 +259,27 @@ export class DropboxAdapter implements StorageAdapter {
 
     await this.writeFile({ recommendations: result }, current);
     return result;
+  }
+
+  async exportSnapshot(): Promise<StorageSnapshot> {
+    const file = await this.readFile();
+    return { profile: file.profile, assessment: file.assessment };
+  }
+
+  async restoreSnapshot(snapshot: StorageSnapshot): Promise<RestoreSnapshotResult> {
+    const current = await this.readFile();
+    const assessment = snapshot.assessment ?? current.assessment;
+    const profile = snapshot.profile
+      ? {
+          ...snapshot.profile,
+          completeness_score: computeCompleteness(snapshot.profile, assessment !== null),
+        }
+      : current.profile;
+    await this.writeFile({ profile, assessment }, current);
+    return {
+      profileRestored: snapshot.profile !== null,
+      assessmentRestored: snapshot.assessment !== null,
+    };
   }
 
   async clearAll(): Promise<void> {

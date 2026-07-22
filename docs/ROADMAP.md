@@ -98,12 +98,22 @@ backend OAuth broker + frontend adapter + connect/disconnect UI.
 Manual export-to-file and import-from-file support, for users who want
 full offline control without a cloud account.
 
-**🔲 Phase 9e — Onboarding integration + provider switching**
+**✅ Phase 9e — Onboarding integration + provider switching (shipped)**
 
-Wires the storage choice into the first-run registration flow (currently
-it's only reachable via Settings after account creation), and builds
-migration tooling so switching providers later actually moves data instead
-of starting fresh.
+Wires the storage choice into the first-run registration flow (a new
+`/onboarding/storage` page, shown once right after signup — not a gate,
+just a detour before `/dashboard`), and builds migration tooling so
+switching providers later actually moves data instead of starting fresh.
+
+- Every `StorageAdapter` gained `exportSnapshot()`/`restoreSnapshot()`;
+  `useStorageProvider.selectProvider()` migrates data automatically
+  before switching. See
+  [`docs/architecture/byos.md`](architecture/byos.md) for the full design,
+  including one honest, one-directional gap: migrating an assessment
+  *into* platform storage isn't possible without new backend work, and
+  the UI says so rather than pretending.
+- Recommendations are deliberately not part of what migrates — they're
+  a derived cache, recomputed for free from the assessment.
 
 **Trade-offs being designed around**, and documented openly rather than
 glossed over:

@@ -2,7 +2,40 @@ import { apiClient } from "@/lib/api/client";
 import type { StartAssessmentResponse } from "@/features/assessment/types";
 import type { ProfileUpdate, RecommendationResult, UserProfile } from "@/features/careers/types";
 import { mapRawQuestion, type RawBackendQuestion } from "../api/stateless.api";
-import type { LocalAssessmentResults, StorageAdapter } from "../types";
+import type {
+  LocalAssessmentResults,
+  RestoreSnapshotResult,
+  StorageAdapter,
+  StorageSnapshot,
+} from "../types";
+
+/**
+ * Converts a full UserProfile (as read from some other adapter's
+ * exportSnapshot()) into the partial ProfileUpdate shape /profile PATCH
+ * expects, dropping null fields rather than sending them — ProfileUpdate's
+ * fields are optional-string, not string-or-null, so a null would either
+ * fail validation or (worse) silently clear a field the target profile
+ * didn't actually have unset.
+ */
+function profileToUpdate(profile: UserProfile): ProfileUpdate {
+  const update: ProfileUpdate = {
+    onboarding_step: profile.onboarding_step,
+    onboarding_completed: profile.onboarding_completed,
+  };
+  if (profile.age_range !== null) update.age_range = profile.age_range;
+  if (profile.education_level !== null) update.education_level = profile.education_level;
+  if (profile.current_field !== null) update.current_field = profile.current_field;
+  if (profile.years_of_experience !== null) {
+    update.years_of_experience = profile.years_of_experience;
+  }
+  if (profile.country !== null) update.country = profile.country;
+  if (profile.primary_goal !== null) update.primary_goal = profile.primary_goal;
+  if (profile.career_concerns !== null) update.career_concerns = profile.career_concerns;
+  if (profile.desired_work_environment !== null) {
+    update.desired_work_environment = profile.desired_work_environment;
+  }
+  return update;
+}
 
 /**
  * Default storage adapter — delegates to the existing platform-hosted
@@ -95,6 +128,39 @@ export class PlatformAdapter implements StorageAdapter {
       `/careers/recommendations?top_k=${topK}`,
     );
     return response.data;
+  }
+
+  async exportSnapshot(): Promise<StorageSnapshot> {
+    const [profile, assessment] = await Promise.all([
+      this.getProfile().catch(() => null),
+      this.getLatestAssessmentResults().catch(() => null),
+    ]);
+    return { profile, assessment };
+  }
+
+  /**
+   * Restores a profile fully. Cannot restore assessment data: the
+   * backend has no endpoint to set a precomputed assessment result
+   * directly — only /assessment/start + /assessment/submit, which take
+   * raw Likert responses (not retained anywhere, only their computed
+   * scores) and always run a fresh scoring pass. So migrating an
+   * assessment INTO platform storage isn't possible without a new
+   * backend endpoint; the user would need to retake it. This is real
+   * and one-directional — migrating OUT of platform storage works fine,
+   * since exportSnapshot() above just reads what's already there. See
+   * docs/architecture/byos.md.
+   */
+  async restoreSnapshot(snapshot: StorageSnapshot): Promise<RestoreSnapshotResult> {
+    let profileRestored = false;
+    if (snapshot.profile) {
+      try {
+        await this.saveProfile(profileToUpdate(snapshot.profile));
+        profileRestored = true;
+      } catch {
+        profileRestored = false;
+      }
+    }
+    return { profileRestored, assessmentRestored: false };
   }
 
   clearAll(): Promise<void> {

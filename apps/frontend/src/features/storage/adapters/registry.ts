@@ -18,7 +18,18 @@ const dropboxAdapter = new DropboxAdapter();
  * to the platform adapter — the UI layer prevents selecting them until
  * their Phase 9d work lands.
  */
-function resolveAdapter(providerId: StorageProviderId): StorageAdapter {
+/**
+ * Resolve a StorageAdapter instance for a given provider ID.
+ * Providers without a functional adapter yet (local_folder) fall back
+ * to the platform adapter — the UI layer prevents selecting them until
+ * their Phase 9d work lands.
+ *
+ * Exported (not just used internally by getActiveStorageAdapter) so
+ * migration code can resolve the *target* adapter for a provider switch
+ * before the switch itself happens — see
+ * features/storage/lib/migrateProviderData.ts.
+ */
+export function getStorageAdapterFor(providerId: StorageProviderId): StorageAdapter {
   switch (providerId) {
     case "local_device":
       return localDeviceAdapter;
@@ -43,5 +54,5 @@ function resolveAdapter(providerId: StorageProviderId): StorageAdapter {
  */
 export function getActiveStorageAdapter(): StorageAdapter {
   const { provider } = useStorageProviderStore.getState();
-  return resolveAdapter(provider);
+  return getStorageAdapterFor(provider);
 }
