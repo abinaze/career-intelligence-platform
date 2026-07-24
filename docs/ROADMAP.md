@@ -143,20 +143,53 @@ of any new phase.
 
 ### Phase 10 — Free-tier production deployment
 
+**🟡 Deployment prep shipped; actual live deployment not attempted.**
+
 Ship a fully deployed, publicly accessible instance using only free-tier
 infrastructure:
 
-- **Frontend** — static export deployed via GitHub Pages (or Vercel's free
-  tier, evaluated against the BYOS architecture's client-side requirements).
-- **Backend** — Hugging Face Spaces (Docker SDK, CPU Basic free tier).
-- **Database** — a free-tier managed Postgres provider (Supabase, Railway,
-  or Render), used only for data that remains under the platform's
-  operational scope even after Phase 9 (e.g., the shared career taxonomy —
-  never personal user data).
+- **Frontend** — Vercel's free tier. GitHub Pages was evaluated, not just
+  assumed away: this app's `middleware.ts` guards routes by reading a
+  cookie server-side, which needs a running Next.js server (Node/Edge
+  runtime) — a true static export (what GitHub Pages actually serves)
+  wouldn't run middleware at all, silently disabling route protection
+  rather than failing loudly. Vercel runs middleware natively, which is
+  why it's the one actually chosen. See
+  [`docs/deployment/guide.md`](deployment/guide.md).
+- **Backend** — Hugging Face Spaces (Docker SDK, CPU Basic free tier), now
+  automated via `.github/workflows/deploy-huggingface.yml` (a
+  `git subtree split` push of `apps/backend`, since Spaces expect a
+  single-purpose repo with a Dockerfile at its root — the opposite of
+  this monorepo's layout).
+- **Database** — Supabase's free tier, not Railway (no longer has a
+  genuine free tier — corrected after the original version of this entry
+  named it) or Render (free databases auto-delete after 30 days).
+- **Cache** — Upstash's free tier, for the same Redis the three BYOS OAuth
+  brokers already use for ticket/exchange staging. Not in the original
+  scope of this phase, because Redis didn't exist in the architecture
+  when this entry was first written — added before Phase 9b, forgotten
+  here until now.
+- **Self-hosting alternative** — `infrastructure/docker/docker-compose.prod.yml`,
+  for anyone who'd rather run everything on their own server instead of
+  the free-tier services above.
 
-This phase depends on Phase 9 being far enough along that the deployed
-instance reflects the intended privacy model, not the current
-all-data-in-Postgres architecture.
+**Real bugs found and fixed while preparing this, unrelated to any of the
+BYOS work**: `docker-compose.dev.yml`'s build `context:`/`dockerfile:`
+paths for both backend and frontend were wrong (Compose resolves
+relative paths against the compose file's own directory, not wherever
+`docker compose` is invoked from) — `make docker-build` never actually
+worked via the `full` profile. The backend's build-context assumption was
+also wrong in this guide's own manually-documented `docker build`
+command. Both fixed; see `docs/deployment/guide.md` for the detail.
+
+**What "prep" means here, honestly**: Docker configs, a CI/CD sync
+workflow, and documentation are all in place and internally consistent —
+verified by careful manual tracing of every path and env var against the
+real `settings.py` (catching a real `JWT_SECRET`/`SECRET_KEY` naming
+mismatch of my own along the way), not by an actual `docker build` or a
+live deployment, since neither Docker nor real hosting credentials were
+available while building this. **Nothing has actually been deployed.**
+The first real test of all of this is someone actually running it.
 
 ### Phase 11 — Extended AI engines
 
