@@ -67,8 +67,17 @@ services:
   # `uv run uvicorn src.main:app --reload` against these same containers.
   backend:
     build:
-      context: .
-      dockerfile: infrastructure/docker/Dockerfile.backend
+      # Dockerfile.backend's COPY paths (pyproject.toml, then `.` into
+      # /app) assume the build context IS apps/backend — not repo root.
+      # Compose resolves `context` relative to *this file's* location
+      # (infrastructure/docker/), so this has to go up two levels and
+      # back down into apps/backend, not just "." (which previously
+      # resolved to infrastructure/docker/ itself — pyproject.toml was
+      # never found there, so this build never actually worked). Same
+      # reasoning for `dockerfile:`, which is resolved relative to
+      # `context:`.
+      context: ../../apps/backend
+      dockerfile: ../../infrastructure/docker/Dockerfile.backend
       target: development
     container_name: cip-backend
     restart: unless-stopped
@@ -81,8 +90,10 @@ services:
       CELERY_BROKER_URL: redis://redis:6379/1
       CELERY_RESULT_BACKEND: redis://redis:6379/2
     volumes:
-      - ./apps/backend:/app/apps/backend
-      - faiss_data:/app/apps/backend/data/faiss
+      # Matches the Dockerfile's WORKDIR /app + COPY . . — the backend
+      # source lands directly at /app, not /app/apps/backend.
+      - ./apps/backend:/app
+      - faiss_data:/app/data/faiss
     ports:
       - "8000:8000"
     depends_on:
@@ -103,7 +114,12 @@ services:
   # Only started with `make docker-up` (--profile full).
   frontend:
     build:
-      context: .
+      # Dockerfile.frontend's COPY paths assume the build context IS repo
+      # root (it reads pnpm-workspace.yaml, packages/, apps/frontend/ —
+      # all repo-root-relative). "." here resolves relative to this
+      # file's own location (infrastructure/docker/), so it has to go up
+      # two levels to actually reach repo root.
+      context: ../..
       dockerfile: infrastructure/docker/Dockerfile.frontend
       target: development
     container_name: cip-frontend
