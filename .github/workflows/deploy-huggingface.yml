@@ -1,0 +1,72 @@
+name: Deploy backend to Hugging Face Spaces
+
+# Hugging Face Spaces (Docker SDK) expects a single-purpose repo with a
+# Dockerfile at its root — the opposite of this monorepo's layout. This
+# workflow bridges that gap without restructuring the main repo: it
+# stages two files that only exist in this workflow's local checkout
+# (never committed back to `origin`/GitHub), commits them locally, then
+# pushes a `git subtree split` of apps/backend to the Space's own git
+# remote. The Space's git history is separate from this repo's; only the
+# HF push happens here.
+#
+# One-time setup before this workflow can do anything:
+#   1. Create the Space at huggingface.co/new-space — SDK: Docker.
+#   2. Add repo secrets here (Settings → Secrets and variables → Actions):
+#      - HF_TOKEN: a Hugging Face access token with write access
+#      - HF_SPACE_ID: "your-hf-username/your-space-name"
+#   3. Add the actual app secrets (DATABASE_URL, SECRET_KEY, etc. — see
+#      infrastructure/huggingface/README.md) as *Space* secrets on
+#      Hugging Face directly, not here — this workflow only handles code
+#      sync, never touches the running Space's runtime configuration.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "apps/backend/**"
+      - "infrastructure/docker/Dockerfile.backend"
+      - "infrastructure/huggingface/**"
+      - ".github/workflows/deploy-huggingface.yml"
+  workflow_dispatch: {} # manual re-deploy without a code change, e.g. after rotating a secret
+
+jobs:
+  deploy:
+    name: Sync apps/backend to Hugging Face Space
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # full history — required for `git subtree split`
+
+      - name: Stage Hugging Face-specific files (local commit only, never pushed to origin)
+        run: |
+          cp infrastructure/docker/Dockerfile.backend apps/backend/Dockerfile
+          cp infrastructure/huggingface/README.md apps/backend/README.md
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add apps/backend/Dockerfile apps/backend/README.md
+          git commit -m "chore: stage Hugging Face Space files [skip ci]"
+
+      - name: Push apps/backend subtree to the Space
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          HF_SPACE_ID: ${{ secrets.HF_SPACE_ID }}
+        run: |
+          if [ -z "$HF_TOKEN" ] || [ -z "$HF_SPACE_ID" ]; then
+            echo "::error::HF_TOKEN and/or HF_SPACE_ID repo secrets are not set — see this workflow's header comment for setup steps."
+            exit 1
+          fi
+
+          git subtree split --prefix=apps/backend -b hf-space-deploy
+          git push --force \
+            "https://user:${HF_TOKEN}@huggingface.co/spaces/${HF_SPACE_ID}" \
+            hf-space-deploy:main
+
+      - name: Summary
+        run: |
+          echo "### Deployed to Hugging Face Space" >> "$GITHUB_STEP_SUMMARY"
+          echo "https://huggingface.co/spaces/${{ secrets.HF_SPACE_ID }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "The Space rebuilds automatically on push. Check its **Logs** tab if it doesn't come up healthy — most first-deploy failures are a missing required Space secret (DATABASE_URL, SECRET_KEY), not a build problem." >> "$GITHUB_STEP_SUMMARY"
