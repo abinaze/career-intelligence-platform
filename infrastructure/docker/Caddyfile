@@ -1,0 +1,25 @@
+# Caddy config for the Oracle Cloud VM deployment path.
+#
+# Used instead of infrastructure/nginx/nginx.conf for this specific
+# scenario: frontend stays on Vercel (see docs/deployment/guide.md), so
+# this VM only needs to reverse-proxy to the backend — and Caddy gets
+# you a real Let's Encrypt certificate automatically, with none of the
+# manual certbot setup nginx would need. nginx.conf remains the right
+# choice for the fully-self-hosted docker-compose.prod.yml path (frontend
+# + backend both on the same box), where it already handles both.
+#
+# Replace api.your-domain.example.com with your real domain before
+# starting Caddy — it needs a real DNS A/AAAA record pointing at this
+# VM's public IP to issue a certificate; it will not silently fall back
+# to HTTP if that's missing; see docs/setup/oracle-cloud-vm-setup.md.
+
+api.your-domain.example.com {
+	reverse_proxy backend:8000
+
+	encode gzip
+
+	log {
+		output stdout
+		format console
+	}
+}
