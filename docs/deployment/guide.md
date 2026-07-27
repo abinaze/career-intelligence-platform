@@ -112,40 +112,84 @@ make docker-down   # stop everything
 
 `NEXT_PUBLIC_APP_URL` is required. It defaults to http://localhost:3000 in development.
 
-## Hugging Face Spaces Deployment for Backend
+## Backend Hosting
 
-Hugging Face Spaces supports FastAPI via the Docker SDK. As of Phase 10, this is automated — pushing to `main` (when `apps/backend/**` changes) triggers `.github/workflows/deploy-huggingface.yml`, which syncs `apps/backend` to the Space's own git repo via a `git subtree split` push. See that workflow's header comment for one-time setup (creating the Space, adding `HF_TOKEN`/`HF_SPACE_ID` as GitHub Actions secrets).
+### What changed, and why
 
-The workflow stages two Hugging-Face-specific files into a local, never-pushed-to-`origin` commit before syncing: `infrastructure/docker/Dockerfile.backend` copied to `apps/backend/Dockerfile` (Spaces expect a Dockerfile at the Space repo's root), and `infrastructure/huggingface/README.md` copied to `apps/backend/README.md` (the Space's *own* README, with the YAML config header Spaces require — deliberately kept separate from `apps/backend/README.md`'s real package documentation, which this never touches on the main branch).
+Phase 10 originally documented Hugging Face Spaces as the primary
+backend host. Attempting the actual deploy surfaced that HF now
+restricts creating new Docker/Gradio Spaces to paid (PRO/Team/Enterprise)
+accounts — a policy change from mid-2026, confirmed against HF's own
+current docs, not assumed. CPU Basic hardware is still free once a Space
+exists; you just can't create one without a paid plan anymore. That sent
+this section back to actual research (web search against current 2026
+sources, not memory) rather than picking a new platform by assumption —
+the same discipline that caught the Railway/Render staleness earlier in
+this doc.
 
-**Hardware**: CPU Basic (the free tier). **Cold starts**: free Spaces go to sleep after a period of inactivity and take a noticeable moment to wake back up on the next request — expected behavior, not a misconfiguration, worth knowing about before assuming something's broken if the first request after a while is slow.
+**What the research found**, compared head-to-head on the thing that
+matters most for a low-traffic personal deployment — sleep/cold start —
+since every platform below is otherwise a reasonable, current, genuinely
+free option:
 
-### Space secrets
+| Platform | Sleep behavior | Ops burden | Card required |
+|---|---|---|---|
+| **Oracle Cloud Always Free VM** | **None** — a real always-on server, not serverless | High — you manage the OS, Docker, security yourself | Yes (identity verification only) |
+| Google Cloud Run | Scales to zero by default on the free tier | Low — managed | Yes |
+| Koyeb | Disputed between sources; Koyeb's more detailed docs describe free instances scaling to zero after 1hr idle | Low — managed | Sometimes |
+| Render | Confirmed sleeps after 15 min, 30-50s wake | Low — managed | No |
+| ~~Fly.io~~ / ~~Railway~~ | N/A | N/A | Confirmed no longer meaningfully free |
 
-Set these under the Space's Settings → Variables and secrets (not the GitHub Actions secrets used for the sync workflow — these are separate):
+No option is simultaneously zero-ops, reliably free, and truly
+zero-sleep — that combination doesn't exist among current offerings. The
+only way to get zero sleep at all is a real server, which is why **Oracle
+Cloud's Always Free Ampere A1 VM is the primary documented path** despite
+the higher setup burden. Google Cloud Run remains a reasonable
+lower-effort alternative if accepting occasional cold starts is fine —
+its deploy mechanics aren't documented in this guide in depth, since the
+Oracle path was the one actually chosen and built out; the existing
+`Dockerfile.backend` production target would work on Cloud Run
+unchanged if you go that route instead (it already reads `$PORT`, which
+Cloud Run injects, for exactly this kind of portability).
 
-```
-SECRET_KEY=your-production-secret
-DATABASE_URL=your-postgres-connection-url
-REDIS_URL=your-redis-connection-url
-ENVIRONMENT=production
-FRONTEND_URL=https://your-frontend.vercel.app
-ANTHROPIC_API_KEY=your-anthropic-key                          # optional, enables chat
-GOOGLE_CLIENT_ID=... / GOOGLE_CLIENT_SECRET=...                # optional, enables Google Drive BYOS
-GOOGLE_OAUTH_REDIRECT_URI=https://your-space.hf.space/api/v1/storage/google-drive/callback
-MICROSOFT_CLIENT_ID=... / MICROSOFT_CLIENT_SECRET=...          # optional, enables OneDrive BYOS
-MICROSOFT_OAUTH_REDIRECT_URI=https://your-space.hf.space/api/v1/storage/onedrive/callback
-DROPBOX_CLIENT_ID=... / DROPBOX_CLIENT_SECRET=...              # optional, enables Dropbox BYOS
-DROPBOX_OAUTH_REDIRECT_URI=https://your-space.hf.space/api/v1/storage/dropbox/callback
-```
+### Oracle Cloud Always Free VM (primary)
 
-`GET /health` on the running Space reports which of the optional pieces are actually wired up (`chat`, `google_drive_storage`, `onedrive_storage`, `dropbox_storage`, plus `database` and `redis` connectivity) — check it first if something isn't working after a deploy, before assuming the build itself failed.
+Full walkthrough: **[`docs/setup/oracle-cloud-vm-setup.md`](../setup/oracle-cloud-vm-setup.md)**
+— account creation, the free Ampere A1 shape (and what to do if you hit
+Oracle's well-documented "out of capacity" error), the two separate
+firewalls that both have to be opened (a common point of confusion
+specific to Oracle Cloud), Docker installation, and bringing up
+`infrastructure/docker/docker-compose.oracle-vm.yml` (Postgres + Redis +
+backend + Caddy for automatic HTTPS — deliberately not
+`docker-compose.prod.yml`, which also runs the frontend for a
+fully-self-hosted setup; this path pairs with frontend staying on
+Vercel, see below).
 
-### Free database & cache options (verified current as of this phase)
+Since Postgres and Redis run on the VM itself here, there's no need for
+Supabase or Upstash accounts on this path — they're only relevant if you
+go with a managed-compute alternative like Cloud Run instead. If you do:
+**Postgres — [Supabase](https://supabase.com)** (free tier pauses after
+7 days idle, doesn't delete; use the direct/session connection string,
+not transaction-mode PgBouncer, which breaks `asyncpg`'s prepared
+statements) and **Redis — [Upstash](https://upstash.com)** (genuine
+persistent free tier, single-database — which is fine, since nothing in
+this codebase's Celery settings is actually wired to a running worker
+yet) are still the right picks, verified current as of this phase.
 
-- **Postgres — [Supabase](https://supabase.com)** (recommended): genuine persistent free tier, 500MB. **Two things worth knowing:** (1) free projects pause after 7 days of inactivity — they don't get deleted, just need a dashboard visit to wake back up, which matters for a demo instance nobody's actively using; (2) Supabase's default pooled connection string uses PgBouncer in transaction mode, which doesn't support prepared statements the way `asyncpg` (this project's driver) expects by default — use Supabase's **direct connection** string (or the "Session" pooling mode, not "Transaction") for `DATABASE_URL`, or you'll see cryptic prepared-statement errors that have nothing to do with your actual schema or credentials.
-- **~~Render free Postgres~~** — not recommended: free databases are automatically deleted after 30 days, with no backups. Fine for a throwaway test, not for anything meant to persist. ~~Railway free tier~~ — no longer has a genuine free tier as of this writing; it's a one-time trial credit followed by a paid minimum. Both claims corrected here after appearing in an earlier version of this guide that hadn't been checked against current pricing.
-- **Redis — [Upstash](https://upstash.com)** (recommended): genuine persistent free tier (500K commands/month, 256MB), no credit card, serverless — a good match for this app's actual Redis usage, which is low-volume, short-TTL OAuth staging keys, not a cache under heavy load. Note: Upstash (like most managed Redis-as-a-service) is single-database — no `SELECT 1`/`SELECT 2` — which is exactly why the Celery variables above don't matter yet; `REDIS_URL` (database 0, implicitly) is the only one this app's current functionality actually reads from.
+Push-to-deploy from GitHub Actions is `.github/workflows/deploy-oracle-vm.yml`
+— SSH into the VM, `git pull`, rebuild and restart just the `backend`
+container. See its header comment for one-time setup (a dedicated
+deploy-only SSH key, added as GitHub repo secrets).
+
+### Hugging Face Spaces (alternative, requires PRO)
+
+Still fully documented in `infrastructure/huggingface/README.md` for
+anyone who already has an HF PRO subscription and would rather use it —
+Docker SDK, CPU Basic hardware. The GitHub Actions sync workflow that
+used to automate deploys there has been removed (it only ever failed
+with "secrets not set," since Spaces created this way now sit behind the
+PRO paywall by default); deploying there now means an occasional manual
+`git subtree split` push — see that README for the exact command.
 
 ## Vercel Deployment for Frontend
 

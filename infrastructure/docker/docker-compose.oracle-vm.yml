@@ -1,0 +1,110 @@
+# Self-hosted backend stack for the Oracle Cloud Always Free VM path —
+# see docs/setup/oracle-cloud-vm-setup.md for the full walkthrough.
+#
+# Deliberately not docker-compose.prod.yml: that file also runs the
+# frontend + nginx, for a fully-self-hosted single-box deployment. This
+# scenario is a hybrid — frontend stays on Vercel (see
+# docs/deployment/guide.md's Vercel section), so this VM only needs
+# Postgres + Redis + the backend + a reverse proxy in front of it.
+# Caddy instead of nginx here specifically because it handles Let's
+# Encrypt certificates automatically — no manual certbot step, which
+# matters more on a VM you're managing by hand than it does for the
+# fully-templated docker-compose.prod.yml path.
+#
+# Usage: docker compose -f infrastructure/docker/docker-compose.oracle-vm.yml --env-file infrastructure/docker/.env.production up -d
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: cip-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:?POSTGRES_USER is required}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      POSTGRES_DB: ${POSTGRES_DB:-cip_db}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - cip-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    # Not published to the host at all — only `backend` reaches this,
+    # over the internal Docker network. A real VM has no cloud-provider
+    # firewall protecting a published Postgres port the way a managed
+    # database would; keeping it off the host entirely is the point.
+
+  redis:
+    image: redis:7-alpine
+    container_name: cip-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
+    volumes:
+      - redis_data:/data
+    networks:
+      - cip-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ../../apps/backend
+      dockerfile: ../../infrastructure/docker/Dockerfile.backend
+      target: production
+    image: cip-backend:prod
+    container_name: cip-backend
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-cip_db}
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+      ENVIRONMENT: production
+      # Everything else (SECRET_KEY, ANTHROPIC_API_KEY, GOOGLE_/MICROSOFT_/
+      # DROPBOX_ CLIENT_ID+SECRET, FRONTEND_URL, the *_REDIRECT_URI vars)
+      # comes from the env_file below.
+    env_file:
+      - .env.production
+    volumes:
+      - faiss_data:/app/data/faiss
+    networks:
+      - cip-network
+    healthcheck:
+      test: ["CMD", "python", "-c", "import httpx; httpx.get('http://localhost:8000/health').raise_for_status()"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    # Deliberately not `ports:` published — Caddy is the only thing this
+    # VM exposes to the internet (see below); the backend is reachable
+    # only through it, over the internal network.
+
+  caddy:
+    image: caddy:2-alpine
+    container_name: cip-caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - backend
+    networks:
+      - cip-network
+
+networks:
+  cip-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  redis_data:
+  faiss_data:
+  caddy_data:
+  caddy_config:
