@@ -1,0 +1,68 @@
+name: Deploy backend to Oracle Cloud VM
+
+# Push-to-deploy over SSH: connects to the VM, pulls the latest main,
+# and rebuilds/restarts just the backend container. Postgres, Redis, and
+# Caddy keep running untouched — this only bounces the service that
+# actually changed. See docs/setup/oracle-cloud-vm-setup.md for what has
+# to exist on the VM before this workflow can do anything (Docker
+# installed, the repo cloned, .env.production filled in, the stack
+# already brought up once manually).
+#
+# One-time setup before this workflow can do anything:
+#   1. Follow docs/setup/oracle-cloud-vm-setup.md end to end — this
+#      workflow assumes the VM is already reachable and the repo is
+#      already cloned there with a working .env.production.
+#   2. Generate a dedicated SSH key pair for this workflow (don't reuse
+#      your personal key): `ssh-keygen -t ed25519 -f oracle-deploy-key -N ""`
+#   3. Add the *public* key (oracle-deploy-key.pub) to the VM's
+#      ~/.ssh/authorized_keys.
+#   4. Add these as GitHub repo secrets (Settings → Secrets and
+#      variables → Actions):
+#      - ORACLE_VM_HOST: the VM's public IP or domain
+#      - ORACLE_VM_USER: the SSH username (ubuntu, opc, or similar,
+#        depending on the image you picked)
+#      - ORACLE_VM_SSH_KEY: the *private* key content (oracle-deploy-key,
+#        not the .pub file)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "apps/backend/**"
+      - "infrastructure/docker/Dockerfile.backend"
+      - "infrastructure/docker/docker-compose.oracle-vm.yml"
+  workflow_dispatch: {} # manual re-deploy without a code change
+
+jobs:
+  deploy:
+    name: SSH deploy to Oracle VM
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Guard against missing setup
+        run: |
+          if [ -z "${{ secrets.ORACLE_VM_HOST }}" ] || [ -z "${{ secrets.ORACLE_VM_USER }}" ] || [ -z "${{ secrets.ORACLE_VM_SSH_KEY }}" ]; then
+            echo "::error::ORACLE_VM_HOST, ORACLE_VM_USER, and/or ORACLE_VM_SSH_KEY repo secrets are not set — see this workflow's header comment and docs/setup/oracle-cloud-vm-setup.md."
+            exit 1
+          fi
+
+      - name: Deploy over SSH
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.ORACLE_VM_HOST }}
+          username: ${{ secrets.ORACLE_VM_USER }}
+          key: ${{ secrets.ORACLE_VM_SSH_KEY }}
+          script_stop: true
+          script: |
+            cd ~/career-intelligence-platform
+            git pull origin main
+            docker compose -f infrastructure/docker/docker-compose.oracle-vm.yml \
+              --env-file infrastructure/docker/.env.production \
+              up -d --build backend
+
+      - name: Summary
+        run: |
+          echo "### Deployed to Oracle Cloud VM" >> "$GITHUB_STEP_SUMMARY"
+          echo "Only the backend container was rebuilt and restarted — Postgres, Redis, and Caddy were left running." >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "If this succeeded but the app doesn't respond, SSH in and check \`docker compose -f infrastructure/docker/docker-compose.oracle-vm.yml logs backend\` — most first-deploy failures are a missing .env.production value, not a build problem." >> "$GITHUB_STEP_SUMMARY"
