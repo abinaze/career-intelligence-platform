@@ -156,22 +156,46 @@ infrastructure:
   rather than failing loudly. Vercel runs middleware natively, which is
   why it's the one actually chosen. See
   [`docs/deployment/guide.md`](deployment/guide.md).
-- **Backend** — Hugging Face Spaces (Docker SDK, CPU Basic free tier), now
-  automated via `.github/workflows/deploy-huggingface.yml` (a
-  `git subtree split` push of `apps/backend`, since Spaces expect a
-  single-purpose repo with a Dockerfile at its root — the opposite of
-  this monorepo's layout).
-- **Database** — Supabase's free tier, not Railway (no longer has a
-  genuine free tier — corrected after the original version of this entry
-  named it) or Render (free databases auto-delete after 30 days).
-- **Cache** — Upstash's free tier, for the same Redis the three BYOS OAuth
-  brokers already use for ticket/exchange staging. Not in the original
-  scope of this phase, because Redis didn't exist in the architecture
-  when this entry was first written — added before Phase 9b, forgotten
-  here until now.
+- **Backend** — Oracle Cloud's Always Free Ampere A1 VM, self-hosting
+  Postgres + Redis + the backend behind Caddy for automatic HTTPS. This
+  wasn't the first choice — see "What actually happened" below for why
+  it changed twice.
 - **Self-hosting alternative** — `infrastructure/docker/docker-compose.prod.yml`,
-  for anyone who'd rather run everything on their own server instead of
-  the free-tier services above.
+  for anyone who'd rather run the frontend on the same box too instead
+  of splitting it to Vercel.
+
+**What actually happened, across three attempts, in order:**
+
+1. **First attempt: Hugging Face Spaces.** Docker SDK, CPU Basic
+   hardware, automated via a `git subtree split` GitHub Actions workflow.
+   Documented and built as the primary path.
+2. **Hit a real wall trying to actually use it**: Hugging Face restricted
+   *creating* new Docker/Gradio Spaces to paid (PRO/Team/Enterprise)
+   accounts sometime around mid-2026 — confirmed against HF's own
+   current docs and multiple corroborating reports of people blindsided
+   by it with no changelog notice. CPU Basic hardware itself is still
+   free once a Space exists; you just can't create one without paying
+   first. This wasn't something Phase 10's original research should have
+   caught — it changed after that work was done — but it genuinely
+   blocked the documented path once someone tried to follow it.
+3. **Second attempt: Google Cloud Run** (genuinely free, scales to
+   zero). Before building it out, went back and actually researched
+   current sleep/cold-start behavior across every free-tier Docker host
+   worth considering (Cloud Run, Koyeb, Render, Fly.io, Railway, Oracle
+   Cloud) via live web search rather than assumption — the same
+   discipline that had already caught the stale Railway/Render claims.
+   **Finding: nothing is simultaneously zero-ops, reliably free, and
+   truly zero-sleep.** The only way to get zero sleep at all is a real
+   always-on server, not serverless compute that scales to zero by
+   design. Given that finding, **the third and final choice was Oracle
+   Cloud's Always Free VM** — trading managed-platform simplicity for
+   an actual server with no sleep of any kind. Full comparison table and
+   reasoning in `docs/deployment/guide.md`.
+
+Given that pivot, Supabase/Upstash (still genuine, current, verified free
+tiers) are no longer needed for the primary path — Postgres and Redis run
+on the same VM. They remain documented as the right choice if you use
+Cloud Run instead.
 
 **Real bugs found and fixed while preparing this, unrelated to any of the
 BYOS work**: `docker-compose.dev.yml`'s build `context:`/`dockerfile:`
@@ -186,10 +210,14 @@ command. Both fixed; see `docs/deployment/guide.md` for the detail.
 workflow, and documentation are all in place and internally consistent —
 verified by careful manual tracing of every path and env var against the
 real `settings.py` (catching a real `JWT_SECRET`/`SECRET_KEY` naming
-mismatch of my own along the way), not by an actual `docker build` or a
-live deployment, since neither Docker nor real hosting credentials were
-available while building this. **Nothing has actually been deployed.**
-The first real test of all of this is someone actually running it.
+mismatch of my own along the way, twice — once in the HF-era files, again
+in the Oracle VM files, since it's easy to reintroduce a typo when
+rewriting), not by an actual `docker build`, a live deployment, or a real
+Oracle Cloud account (none were available while building this).
+**Nothing has actually been deployed.** The first real test of all of
+this — including whether the Oracle Cloud console still matches
+`docs/setup/oracle-cloud-vm-setup.md`'s steps — is someone actually
+running it.
 
 ### Phase 11 — Extended AI engines
 
