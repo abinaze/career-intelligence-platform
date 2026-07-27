@@ -9,14 +9,26 @@ pinned: false
 license: other
 ---
 
+> **Not the primary deployment path.** Hugging Face restricted creating
+> new Docker/Gradio Spaces to paid (PRO/Team/Enterprise) accounts as of
+> mid-2026 — CPU Basic hardware itself is still free once a Space
+> exists, but you can no longer create one without a paid plan. The
+> primary documented path is now a self-hosted Oracle Cloud Always Free
+> VM — see `docs/setup/oracle-cloud-vm-setup.md`. This file (and the
+> Docker SDK config below) is kept for anyone who already has HF PRO and
+> would rather use it; there's no longer a GitHub Actions workflow that
+> syncs to it automatically (it's been removed — see
+> `docs/deployment/guide.md` for why), so deploying here means pushing
+> to this Space's git remote yourself.
+
 # Career Intelligence Platform — Backend API
 
 This Space runs the FastAPI backend for the Career Intelligence Platform
-(https://github.com/abinaze/career-intelligence-platform). It's deployed
-here automatically from the `apps/backend` directory of that repo — see
-`.github/workflows/deploy-huggingface.yml` in the main repo for the sync
-mechanism. **This Space's own git history is not meant to be edited
-directly** — changes should go through the main repo.
+(https://github.com/abinaze/career-intelligence-platform). It is **not**
+kept in sync automatically anymore — see the note at the top of this
+file for why. To deploy a change here manually: `git subtree split
+--prefix=apps/backend -b hf-space-deploy` from the main repo, then push
+that branch to this Space's git remote as `main`.
 
 ## Configuration
 
