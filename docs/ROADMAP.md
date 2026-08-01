@@ -156,46 +156,65 @@ infrastructure:
   rather than failing loudly. Vercel runs middleware natively, which is
   why it's the one actually chosen. See
   [`docs/deployment/guide.md`](deployment/guide.md).
-- **Backend** — Oracle Cloud's Always Free Ampere A1 VM, self-hosting
-  Postgres + Redis + the backend behind Caddy for automatic HTTPS. This
-  wasn't the first choice — see "What actually happened" below for why
-  it changed twice.
+- **Backend** — **Koyeb**, the actual chosen path (see the four-attempt
+  sequence below for why it took this long to land here). Postgres on
+  Supabase, Redis on Upstash — neither requires a credit card, confirmed
+  specifically because that constraint ended up mattering.
+- **Backend, documented alternative for later** — Oracle Cloud's Always
+  Free Ampere A1 VM, self-hosting Postgres + Redis + the backend behind
+  Caddy. The *better* answer once a credit card is available (genuinely
+  zero sleep, unlike Koyeb's disputed behavior) — kept fully documented,
+  not primary, purely because of a constraint outside the code itself.
 - **Self-hosting alternative** — `infrastructure/docker/docker-compose.prod.yml`,
   for anyone who'd rather run the frontend on the same box too instead
   of splitting it to Vercel.
 
-**What actually happened, across three attempts, in order:**
+**What actually happened, across four attempts, in order — worth reading
+as a sequence, not just the final answer, since each step's reasoning is
+what makes the final choice defensible rather than arbitrary:**
 
-1. **First attempt: Hugging Face Spaces.** Docker SDK, CPU Basic
-   hardware, automated via a `git subtree split` GitHub Actions workflow.
-   Documented and built as the primary path.
+1. **Hugging Face Spaces.** Docker SDK, CPU Basic hardware, automated via
+   a `git subtree split` GitHub Actions workflow. Documented and built as
+   the primary path.
 2. **Hit a real wall trying to actually use it**: Hugging Face restricted
    *creating* new Docker/Gradio Spaces to paid (PRO/Team/Enterprise)
    accounts sometime around mid-2026 — confirmed against HF's own
    current docs and multiple corroborating reports of people blindsided
-   by it with no changelog notice. CPU Basic hardware itself is still
-   free once a Space exists; you just can't create one without paying
-   first. This wasn't something Phase 10's original research should have
-   caught — it changed after that work was done — but it genuinely
-   blocked the documented path once someone tried to follow it.
-3. **Second attempt: Google Cloud Run** (genuinely free, scales to
-   zero). Before building it out, went back and actually researched
-   current sleep/cold-start behavior across every free-tier Docker host
-   worth considering (Cloud Run, Koyeb, Render, Fly.io, Railway, Oracle
-   Cloud) via live web search rather than assumption — the same
-   discipline that had already caught the stale Railway/Render claims.
-   **Finding: nothing is simultaneously zero-ops, reliably free, and
-   truly zero-sleep.** The only way to get zero sleep at all is a real
-   always-on server, not serverless compute that scales to zero by
-   design. Given that finding, **the third and final choice was Oracle
-   Cloud's Always Free VM** — trading managed-platform simplicity for
-   an actual server with no sleep of any kind. Full comparison table and
-   reasoning in `docs/deployment/guide.md`.
+   by it with no changelog notice. This wasn't something Phase 10's
+   original research should have caught — it changed after that work was
+   done — but it genuinely blocked the documented path once someone
+   tried to follow it. The now-nonfunctional sync workflow was removed
+   rather than left in place failing the same way every time.
+3. **Researched every current free-tier Docker host** (Cloud Run, Koyeb,
+   Render, Fly.io, Railway, Oracle Cloud) via live web search rather than
+   assumption — the same discipline that had already caught the stale
+   Railway/Render claims. **Finding: nothing is simultaneously zero-ops,
+   reliably free, and truly zero-sleep.** Chose Oracle Cloud's Always
+   Free VM — the only genuinely zero-sleep option, trading managed-platform
+   simplicity for an actual server. Built out fully: compose file, Caddy
+   config, SSH deploy workflow, a setup guide covering Oracle-specific
+   gotchas (two separate firewalls that both have to be opened; the
+   well-known "out of capacity" error on the free ARM shape).
+4. **A harder constraint surfaced after that was built: no credit card
+   available at all.** Both Oracle (identity verification) and Google
+   Cloud Run (GCP's billing account, even for free-tier usage) require
+   one. That's not a preference to route around — it eliminated both of
+   the two best sleep-behavior options outright. Went back to the same
+   research discipline specifically for card-free platforms; confirmed
+   Koyeb and Render as the two real remaining candidates (explicitly
+   distrusting several other results — "SnapDeploy," "GratisVPS," and
+   near-identical marketing copy syndicated across multiple "independent"
+   review sites — as likely SEO content-farm material with no
+   independent verification, rather than passing them through as
+   legitimate options). **Koyeb is the final choice**: best remaining
+   shot at avoiding sleep, at the cost of thin resources (0.1 vCPU/512MB)
+   and a sleep-behavior question that's genuinely unresolved between
+   sources — stated as such, not smoothed over.
 
-Given that pivot, Supabase/Upstash (still genuine, current, verified free
-tiers) are no longer needed for the primary path — Postgres and Redis run
-on the same VM. They remain documented as the right choice if you use
-Cloud Run instead.
+Given step 4, Supabase and Upstash are back in the primary path (they'd
+briefly been dropped when Oracle's VM was the plan, since that
+self-hosts its own Postgres/Redis) — both re-verified card-free
+specifically because of the new constraint, not just carried over.
 
 **Real bugs found and fixed while preparing this, unrelated to any of the
 BYOS work**: `docker-compose.dev.yml`'s build `context:`/`dockerfile:`
@@ -206,18 +225,18 @@ worked via the `full` profile. The backend's build-context assumption was
 also wrong in this guide's own manually-documented `docker build`
 command. Both fixed; see `docs/deployment/guide.md` for the detail.
 
-**What "prep" means here, honestly**: Docker configs, a CI/CD sync
-workflow, and documentation are all in place and internally consistent —
-verified by careful manual tracing of every path and env var against the
-real `settings.py` (catching a real `JWT_SECRET`/`SECRET_KEY` naming
-mismatch of my own along the way, twice — once in the HF-era files, again
-in the Oracle VM files, since it's easy to reintroduce a typo when
-rewriting), not by an actual `docker build`, a live deployment, or a real
-Oracle Cloud account (none were available while building this).
-**Nothing has actually been deployed.** The first real test of all of
-this — including whether the Oracle Cloud console still matches
-`docs/setup/oracle-cloud-vm-setup.md`'s steps — is someone actually
-running it.
+**What "prep" means here, honestly**: Docker configs, CI/CD workflows,
+and documentation are all in place and internally consistent — verified
+by careful manual tracing of every path and env var against the real
+`settings.py` (catching a real `JWT_SECRET`/`SECRET_KEY` naming mismatch
+of my own along the way, more than once, since it's easy to reintroduce a
+typo when rewriting from a mental template of an earlier file), not by
+an actual `docker build`, a live deployment, or a real account on any of
+Koyeb/Oracle/Supabase/Upstash (none were available while building this).
+**Nothing has actually been deployed.** The first real test of any of
+this — including whether Koyeb's console still matches
+`docs/setup/koyeb-setup.md`'s steps, and whether its sleep behavior turns
+out to match either disputed claim — is someone actually running it.
 
 ### Phase 11 — Extended AI engines
 

@@ -114,45 +114,67 @@ make docker-down   # stop everything
 
 ## Backend Hosting
 
-### What changed, and why
+### What changed, and why (twice)
 
 Phase 10 originally documented Hugging Face Spaces as the primary
 backend host. Attempting the actual deploy surfaced that HF now
 restricts creating new Docker/Gradio Spaces to paid (PRO/Team/Enterprise)
 accounts — a policy change from mid-2026, confirmed against HF's own
 current docs, not assumed. CPU Basic hardware is still free once a Space
-exists; you just can't create one without a paid plan anymore. That sent
-this section back to actual research (web search against current 2026
-sources, not memory) rather than picking a new platform by assumption —
-the same discipline that caught the Railway/Render staleness earlier in
-this doc.
+exists; you just can't create one without a paid plan anymore.
 
-**What the research found**, compared head-to-head on the thing that
-matters most for a low-traffic personal deployment — sleep/cold start —
-since every platform below is otherwise a reasonable, current, genuinely
-free option:
+That sent this section back to actual research (web search against
+current 2026 sources, not memory) on sleep/cold-start behavior across
+every free-tier Docker host worth considering — the same discipline that
+had already caught the stale Railway/Render claims earlier in this doc:
 
 | Platform | Sleep behavior | Ops burden | Card required |
 |---|---|---|---|
-| **Oracle Cloud Always Free VM** | **None** — a real always-on server, not serverless | High — you manage the OS, Docker, security yourself | Yes (identity verification only) |
-| Google Cloud Run | Scales to zero by default on the free tier | Low — managed | Yes |
-| Koyeb | Disputed between sources; Koyeb's more detailed docs describe free instances scaling to zero after 1hr idle | Low — managed | Sometimes |
+| Oracle Cloud Always Free VM | **None** — a real always-on server, not serverless | High — you manage the OS, Docker, security yourself | **Yes** (identity verification only) |
+| Google Cloud Run | Scales to zero by default on the free tier | Low — managed | **Yes** (billing account, even for free-tier usage) |
+| **Koyeb** | Disputed between sources — one hands-on test reports no sleep at all; Koyeb's own more detailed docs describe free instances scaling to zero after 1hr idle. Genuinely unresolved, stated honestly rather than picking whichever claim is more convenient | Low — managed | No |
 | Render | Confirmed sleeps after 15 min, 30-50s wake | Low — managed | No |
 | ~~Fly.io~~ / ~~Railway~~ | N/A | N/A | Confirmed no longer meaningfully free |
 
-No option is simultaneously zero-ops, reliably free, and truly
-zero-sleep — that combination doesn't exist among current offerings. The
-only way to get zero sleep at all is a real server, which is why **Oracle
-Cloud's Always Free Ampere A1 VM is the primary documented path** despite
-the higher setup burden. Google Cloud Run remains a reasonable
-lower-effort alternative if accepting occasional cold starts is fine —
-its deploy mechanics aren't documented in this guide in depth, since the
-Oracle path was the one actually chosen and built out; the existing
-`Dockerfile.backend` production target would work on Cloud Run
-unchanged if you go that route instead (it already reads `$PORT`, which
-Cloud Run injects, for exactly this kind of portability).
+That research picked Oracle's VM first — the only genuinely zero-sleep
+option. **Then a second, harder constraint surfaced: no credit card
+available at all**, which rules out both Oracle *and* Cloud Run (Google's
+free tier still needs a billing account with a card on file, even though
+usage within quota isn't charged). That leaves exactly two real
+candidates — Koyeb and Render — and **Koyeb is the one actually chosen**:
+best remaining shot at avoiding sleep, at the cost of thin resources
+(0.1 vCPU / 512MB RAM on the free instance) and that genuinely unsettled
+sleep-behavior question above.
 
-### Oracle Cloud Always Free VM (primary)
+The Oracle Cloud VM path is left fully documented below and in
+`docs/setup/oracle-cloud-vm-setup.md` — it's the better answer the moment
+a credit card is available, since it's the only option with zero sleep
+of any kind, not a maybe.
+
+### Koyeb (primary, given no credit card)
+
+Full walkthrough: **[`docs/setup/koyeb-setup.md`](../setup/koyeb-setup.md)**
+— account creation (confirmed no card requested), Koyeb's native
+monorepo support (a "Work directory" setting, pointed at `apps/backend`
+— the same build-context assumption that tripped up
+`docker-compose.dev.yml` earlier in this project, handled correctly here
+via Koyeb's own mechanism rather than a workaround), exposing port 8000,
+and environment variables.
+
+Unlike every other deployment path in this project, **Koyeb needs no
+custom GitHub Actions workflow at all** — its GitHub integration
+auto-deploys on every push to `main` once connected, the same way Vercel
+does. That's genuinely simpler than the Hugging Face Spaces path's
+`git subtree split` workflow (removed) or the Oracle VM path's SSH-based
+one (still present, for that path).
+
+Postgres and Redis are external here — **Supabase** and **Upstash**,
+both re-confirmed to require no credit card specifically because that
+constraint now matters, not just carried over from earlier research. See
+the Oracle VM section below for the connection-string details (the
+Supabase/PgBouncer gotcha applies identically here).
+
+### Oracle Cloud Always Free VM (documented, needs a credit card)
 
 Full walkthrough: **[`docs/setup/oracle-cloud-vm-setup.md`](../setup/oracle-cloud-vm-setup.md)**
 — account creation, the free Ampere A1 shape (and what to do if you hit
@@ -166,15 +188,16 @@ fully-self-hosted setup; this path pairs with frontend staying on
 Vercel, see below).
 
 Since Postgres and Redis run on the VM itself here, there's no need for
-Supabase or Upstash accounts on this path — they're only relevant if you
-go with a managed-compute alternative like Cloud Run instead. If you do:
+Supabase or Upstash accounts on this specific path.
+
 **Postgres — [Supabase](https://supabase.com)** (free tier pauses after
 7 days idle, doesn't delete; use the direct/session connection string,
 not transaction-mode PgBouncer, which breaks `asyncpg`'s prepared
 statements) and **Redis — [Upstash](https://upstash.com)** (genuine
 persistent free tier, single-database — which is fine, since nothing in
 this codebase's Celery settings is actually wired to a running worker
-yet) are still the right picks, verified current as of this phase.
+yet) are the right picks whenever an external managed database is
+needed (Koyeb above, or this VM path if you'd rather not self-host them).
 
 Push-to-deploy from GitHub Actions is `.github/workflows/deploy-oracle-vm.yml`
 — SSH into the VM, `git pull`, rebuild and restart just the `backend`
