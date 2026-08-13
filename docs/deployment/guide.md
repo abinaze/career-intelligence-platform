@@ -132,8 +132,8 @@ had already caught the stale Railway/Render claims earlier in this doc:
 |---|---|---|---|
 | Oracle Cloud Always Free VM | **None** — a real always-on server, not serverless | High — you manage the OS, Docker, security yourself | **Yes** (identity verification only) |
 | Google Cloud Run | Scales to zero by default on the free tier | Low — managed | **Yes** (billing account, even for free-tier usage) |
-| **Koyeb** | Disputed between sources — one hands-on test reports no sleep at all; Koyeb's own more detailed docs describe free instances scaling to zero after 1hr idle. Genuinely unresolved, stated honestly rather than picking whichever claim is more convenient | Low — managed | No |
-| Render | Confirmed sleeps after 15 min, 30-50s wake | Low — managed | No |
+| Koyeb | Disputed between sources — one hands-on test reports no sleep at all; Koyeb's own more detailed docs describe free instances scaling to zero after 1hr idle. Genuinely unresolved, stated honestly rather than picking whichever claim is more convenient. **Tried; deployment didn't work, cause unconfirmed — see below.** | Low — managed | No |
+| **Render** | Confirmed sleeps after 15 min, 30-60s wake — a known trade-off, not a maybe | Low — managed | No |
 | ~~Fly.io~~ / ~~Railway~~ | N/A | N/A | Confirmed no longer meaningfully free |
 
 That research picked Oracle's VM first — the only genuinely zero-sleep
@@ -141,38 +141,66 @@ option. **Then a second, harder constraint surfaced: no credit card
 available at all**, which rules out both Oracle *and* Cloud Run (Google's
 free tier still needs a billing account with a card on file, even though
 usage within quota isn't charged). That leaves exactly two real
-candidates — Koyeb and Render — and **Koyeb is the one actually chosen**:
-best remaining shot at avoiding sleep, at the cost of thin resources
-(0.1 vCPU / 512MB RAM on the free instance) and that genuinely unsettled
-sleep-behavior question above.
+candidates — Koyeb and Render.
+
+**Koyeb was tried first** — best theoretical shot at avoiding sleep, at
+the cost of thin resources (0.1 vCPU / 512MB RAM on the free instance)
+and that genuinely unsettled sleep-behavior question above. **The
+deployment attempt didn't work.** The exact symptom (build failure,
+runtime crash, or something else) was never captured — one plausible
+contributing factor, `../infrastructure/docker/Dockerfile.backend`
+relative-path ambiguity in Koyeb's Dockerfile location field, was
+addressed afterward by adding a hand-synced `apps/backend/Dockerfile`
+duplicate (see that file's own header comment), but this was never
+confirmed as *the* actual cause, and Koyeb wasn't re-tried after the fix.
+
+**Render is the primary path now**, specifically because it's the other
+card-free candidate and hasn't been tried and failed yet — not because
+new evidence favors it over Koyeb. Its sleep behavior is at least a known
+quantity rather than a disputed one: confirmed sleep after 15 minutes
+idle, 30-60 second cold start on wake. See
+[`docs/setup/render-setup.md`](../setup/render-setup.md) for the full
+walkthrough and what to do if Render fails too.
 
 The Oracle Cloud VM path is left fully documented below and in
 `docs/setup/oracle-cloud-vm-setup.md` — it's the better answer the moment
 a credit card is available, since it's the only option with zero sleep
 of any kind, not a maybe.
 
-### Koyeb (primary, given no credit card)
+### Render (primary, given no credit card)
 
-Full walkthrough: **[`docs/setup/koyeb-setup.md`](../setup/koyeb-setup.md)**
-— account creation (confirmed no card requested), Koyeb's native
-monorepo support (a "Work directory" setting, pointed at `apps/backend`
-— the same build-context assumption that tripped up
+Full walkthrough: **[`docs/setup/render-setup.md`](../setup/render-setup.md)**
+— account creation (confirmed no card requested), Render's monorepo
+support (a "Root Directory" setting, pointed at `apps/backend`, plus the
+independently-configurable Dockerfile Path / Docker Build Context
+Directory fields — the same build-context assumption that tripped up
 `docker-compose.dev.yml` earlier in this project, handled correctly here
-via Koyeb's own mechanism rather than a workaround), exposing port 8000,
-and environment variables.
+via Render's own mechanism), a native Health Check Path field set to
+`/health`, exposing the service, and environment variables.
 
-Unlike every other deployment path in this project, **Koyeb needs no
-custom GitHub Actions workflow at all** — its GitHub integration
-auto-deploys on every push to `main` once connected, the same way Vercel
-does. That's genuinely simpler than the Hugging Face Spaces path's
-`git subtree split` workflow (removed) or the Oracle VM path's SSH-based
-one (still present, for that path).
+Unlike the Oracle VM path, **Render needs no custom GitHub Actions
+workflow at all** — its GitHub integration auto-deploys on every push to
+the connected branch once connected, the same way Vercel does. That's
+genuinely simpler than the Hugging Face Spaces path's `git subtree
+split` workflow (removed) or the Oracle VM path's SSH-based one (still
+present, for that path).
 
 Postgres and Redis are external here — **Supabase** and **Upstash**,
 both re-confirmed to require no credit card specifically because that
 constraint now matters, not just carried over from earlier research. See
 the Oracle VM section below for the connection-string details (the
 Supabase/PgBouncer gotcha applies identically here).
+
+### Koyeb (alternative, tried, didn't work)
+
+Full walkthrough: **[`docs/setup/koyeb-setup.md`](../setup/koyeb-setup.md)**
+— kept fully documented since it's still a real no-credit-card
+candidate if Render doesn't work either, but it's not where to start.
+Same environment variables and external Postgres/Redis setup as the
+Render path above; the only real differences are Koyeb's single "Work
+directory" monorepo setting (versus Render's independent Dockerfile
+Path / Docker Build Context Directory fields) and the unresolved
+sleep-behavior dispute noted in the comparison table above.
 
 ### Oracle Cloud Always Free VM (documented, needs a credit card)
 
@@ -225,7 +253,7 @@ Set the framework preset to Next.js.
 Add these environment variables:
 
 ```
-NEXT_PUBLIC_API_URL=https://your-hf-space.hf.space
+NEXT_PUBLIC_API_URL=https://your-app-name.onrender.com
 NEXT_PUBLIC_APP_URL=https://your-app.vercel.app
 ```
 
