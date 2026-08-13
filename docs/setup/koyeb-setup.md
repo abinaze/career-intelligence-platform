@@ -1,17 +1,25 @@
-# Koyeb setup (backend hosting, no credit card required)
+# Koyeb setup (backend hosting, no credit card required — tried, didn't work)
 
-Chosen after Oracle Cloud and Google Cloud Run both turned out to
-require a credit card on file (Oracle for identity verification, Google
-for the billing account a free-tier project still needs) — a hard
-constraint that ruled both out. Koyeb and Render were the two remaining
-options confirmed not to require one; Koyeb was picked for the better
-chance at avoiding sleep/cold starts — though that's genuinely unsettled
-between sources, see the honesty note in `docs/deployment/guide.md`'s
-comparison table. Not tested end-to-end against a live Koyeb account
-while writing this (no account was available in the environment this was
-built in) — based on Koyeb's own current documentation, which is
-detailed and specific enough to follow directly, but treat your first
-real walkthrough as the actual test.
+**Status: attempted and reported not working; kept documented, not
+recommended as a starting point.** Originally chosen over Render for the
+better theoretical chance at avoiding sleep/cold starts (Koyeb's sleep
+behavior was — and still is — genuinely unsettled between sources,
+unlike Render's confirmed 15-minute sleep). A real deployment attempt on
+Koyeb didn't work; the exact symptom (build failure, runtime crash, or
+something else) was never captured, so this page can't tell you what
+went wrong or promise the fix below actually addresses it. **Render is
+now the primary path** — see `docs/setup/render-setup.md` — precisely
+because it's the one of the two that hasn't been tried and failed yet.
+
+This guide is left here in full for two reasons: it's still a real,
+no-credit-card candidate if Render also doesn't work for you, and the
+`apps/backend/Dockerfile` duplicate this guide originally motivated is
+now used by both platforms' setup guides. Not tested end-to-end against
+a live Koyeb account while writing this update either (no account was
+available in the environment this was built in) — based on Koyeb's own
+current documentation, which is detailed and specific enough to follow
+directly, but treat any real walkthrough as the actual test, not this
+page.
 
 ## 1. Create a Koyeb account
 
@@ -33,19 +41,20 @@ repositories if this is the first time) → select
   subdirectory, matching exactly what `Dockerfile.backend`'s own `COPY`
   instructions already assume (see `docs/deployment/guide.md`'s note on
   this same assumption tripping up the Docker Compose files earlier in
-  this project).
-- **Dockerfile location**: `../infrastructure/docker/Dockerfile.backend`
-  (relative to the work directory above). This relies on Docker's `-f`
-  flag being able to point outside the build context — which is normal,
-  standard Docker behavior (only `COPY`/`ADD` sources are restricted to
-  the context; the Dockerfile's own location isn't) — but it's the one
-  part of this guide that's an inference from how Docker works rather
-  than a confirmed screenshot of Koyeb's own UI accepting a `../` path.
-  **If Koyeb's Dockerfile location field rejects that path**: commit a
-  plain copy of `infrastructure/docker/Dockerfile.backend` to
-  `apps/backend/Dockerfile` instead, and set Dockerfile location to just
-  `Dockerfile` (the default). Worth trying the relative path first since
-  it keeps one canonical Dockerfile instead of two copies to keep in sync.
+  this project). Per Koyeb's own monorepo docs, setting a work directory
+  excludes the rest of the repository from the build environment — so
+  the Dockerfile itself has to live inside `apps/backend`, not out at
+  `infrastructure/docker/`.
+- **Dockerfile location**: leave at the default (`Dockerfile`). This
+  resolves to `apps/backend/Dockerfile` — a hand-synced duplicate of
+  `infrastructure/docker/Dockerfile.backend`, kept specifically for this
+  reason. See that file's own header comment for what "hand-synced"
+  means in practice (no build-time mechanism keeps the two in sync, only
+  the comment). An earlier version of this guide tried a `../
+  infrastructure/docker/Dockerfile.backend` relative path to avoid the
+  duplicate entirely; that was never confirmed to work against Koyeb's
+  real UI, and given the "rest of repo excluded" behavior above, it
+  likely wouldn't have — the duplicate is the reliable option.
 - **Docker build target**: `production` (this Dockerfile is multi-stage;
   Koyeb needs to know which stage to actually run).
 
