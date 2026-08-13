@@ -206,10 +206,29 @@ what makes the final choice defensible rather than arbitrary:**
    near-identical marketing copy syndicated across multiple "independent"
    review sites — as likely SEO content-farm material with no
    independent verification, rather than passing them through as
-   legitimate options). **Koyeb is the final choice**: best remaining
+   legitimate options). **Koyeb was the first choice**: best remaining
    shot at avoiding sleep, at the cost of thin resources (0.1 vCPU/512MB)
    and a sleep-behavior question that's genuinely unresolved between
    sources — stated as such, not smoothed over.
+5. **A real deployment attempt on Koyeb didn't work.** The exact
+   symptom (build failure, runtime crash, or something else entirely)
+   was never captured. One plausible contributing factor — Koyeb's
+   Dockerfile location field being pointed at a `../` relative path
+   outside the configured Work directory, which Koyeb's own monorepo
+   docs suggest gets excluded from the build environment once a Work
+   directory is set — was addressed afterward by committing a
+   hand-synced `apps/backend/Dockerfile` duplicate (see that file's own
+   header comment for the reasoning and its trade-off), but this was
+   never confirmed as *the* actual cause, and Koyeb was not re-tried
+   after the fix. **Render is now the primary path**: the other
+   card-free candidate from step 4, chosen simply because it's the one
+   that hasn't been tried and failed yet, not because new evidence
+   favors it over Koyeb. Its sleep behavior is at least a known
+   quantity — confirmed 15-minute idle sleep, 30-60s wake — rather than
+   Koyeb's disputed one. See `docs/setup/render-setup.md`; the Koyeb
+   guide (`docs/setup/koyeb-setup.md`) stays fully documented as a
+   fallback, not deleted, since it's still a real candidate if Render
+   fails too.
 
 Given step 4, Supabase and Upstash are back in the primary path (they'd
 briefly been dropped when Oracle's VM was the plan, since that
@@ -231,12 +250,15 @@ by careful manual tracing of every path and env var against the real
 `settings.py` (catching a real `JWT_SECRET`/`SECRET_KEY` naming mismatch
 of my own along the way, more than once, since it's easy to reintroduce a
 typo when rewriting from a mental template of an earlier file), not by
-an actual `docker build`, a live deployment, or a real account on any of
-Koyeb/Oracle/Supabase/Upstash (none were available while building this).
-**Nothing has actually been deployed.** The first real test of any of
-this — including whether Koyeb's console still matches
-`docs/setup/koyeb-setup.md`'s steps, and whether its sleep behavior turns
-out to match either disputed claim — is someone actually running it.
+an actual `docker build`, a real account on Render/Oracle/Supabase/Upstash
+(none were available while building this), or — for Render specifically —
+any real deployment attempt at all. **Koyeb was actually tried and
+didn't work**, for a reason that was never pinned down; **nothing has
+ever been successfully deployed anywhere.** The first real test of any
+of this — starting with whether Render's console still matches
+`docs/setup/render-setup.md`'s steps, and whether the confirmed
+15-minute sleep behavior is tolerable in practice — is someone actually
+running it.
 
 ### Phase 11 — Extended AI engines
 
