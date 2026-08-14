@@ -159,13 +159,13 @@ make docker-build
 make docker-up      # Postgres + Redis + backend + frontend, all in containers
 ```
 
-See [`docs/deployment/guide.md`](./docs/deployment/guide.md) for free-tier production deployment (backend on Hugging Face Spaces, frontend on Vercel/GitHub, managed Postgres on Supabase/Railway/Render).
+See [`docs/deployment/guide.md`](./docs/deployment/guide.md) for free-tier production deployment (backend on Render, frontend on Vercel, managed Postgres on Supabase, managed Redis on Upstash — see that guide for the full reasoning and the Oracle Cloud VM / Koyeb alternatives).
 
 ## Privacy & data ownership
 
 This project takes the position that **career and psychometric data is uniquely personal**. Rather than only stating this as an intention, Phase 9a has shipped a real, working first step: from **Settings → Storage**, you can switch from the default account-based storage to **This Device** storage, where your profile, assessment results, and recommendations are kept exclusively in your browser's local storage and never written to the platform's database. The backend still performs the computation (scoring, similarity search, ranking) but does so statelessly — it never persists what you send it under this mode.
 
-Google Drive, OneDrive, Dropbox, and local-folder export are the next steps on this path, each behind the same storage-adapter interface proven by the local-device implementation. See [`docs/architecture/byos.md`](./docs/architecture/byos.md) for the technical design and [`docs/ROADMAP.md`](./docs/ROADMAP.md) for what's shipped versus planned — including the honest trade-offs (no cross-device sync for on-device storage, no export/import yet) rather than only the upside.
+Google Drive, OneDrive, and Dropbox are now live behind that same storage-adapter interface, plus a manual export/import feature for moving data between any of them (a deliberate scoping choice over a true `local_folder` adapter — see `docs/ROADMAP.md` for why). None of the three cloud providers has yet been tested against a real OAuth account, which is the single largest "looks done, never actually run" gap in this feature area. See [`docs/architecture/byos.md`](./docs/architecture/byos.md) for the technical design and [`docs/ROADMAP.md`](./docs/ROADMAP.md) for what's shipped versus planned — including the honest trade-offs (e.g. the platform-storage adapter can't restore a precomputed assessment score, only re-run scoring from raw responses it doesn't retain) rather than only the upside.
 
 ## Documentation
 
