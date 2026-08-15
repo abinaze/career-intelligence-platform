@@ -418,7 +418,127 @@ Mobile stays out of this sequence entirely, per §2.
 
 ---
 
-## What this plan deliberately does not do
+## 12. Scope Triage: Offline / Lifecycle / Security / Distribution
+
+A follow-up review of this plan raised 18 additional areas (offline
+behavior, installer lifecycle, crash recovery, logging, process
+management, resource limits, model lifecycle, backup/restore, version
+migration, threat model, code signing, release channels, feature
+flags, accessibility, i18n, licensing, supply chain, telemetry) and
+closed with the right instinct: *"optimize for the smallest
+architecture that can actually be shipped... not theoretical
+architecture."* Agreed — so this section triages rather than expands.
+Each item gets folded into the existing plan at near-zero cost, or
+explicitly parked with a stated reason it's safe to defer, not
+silently dropped.
+
+### Fold in now — cheap today, expensive to retrofit later
+
+These attach to steps already in §11's sequence, not new steps.
+
+- **Backup/restore and data export** (item 8) — **don't design a new
+  format.** `docs/architecture/byos.md` already defines a versioned
+  export envelope (`format_version`, `exported_at`, `exported_from`)
+  for the existing BYOS manual export/import feature (Phase 9d). The
+  local desktop persistence layer (§11 step 4) should use the exact
+  same envelope shape from day one. This turns "add backup/restore" from
+  new design work into "point the existing format at a new local file
+  instead of a downloaded JSON," and it's the reason to decide this at
+  step 4, not bolt it on after the format's already shipped without it.
+- **Version migration for local data** (item 9) — direct consequence of
+  the point above: because the envelope already carries
+  `format_version`, versioned local-schema migration is mostly free if
+  step 4 is built with that field from the start. Costs real rework
+  if added after the fact.
+- **Installer/uninstaller lifecycle** (item 2) — already implied by
+  §10's "data and application binaries stay on separate paths," but
+  make the rule explicit now: **uninstall removes the app directory
+  only, never the data directory**, and "delete all data" is a
+  separate, deliberate, confirmed action in-app, not a side effect of
+  uninstalling. Cheap to state now; a real support headache if decided
+  after people have data on disk.
+- **Process management** (item 5) — not a new step, it's what the §11
+  step 2 sidecar spike needs to answer anyway (startup, health check,
+  port, shutdown). Naming it explicitly here just makes sure the spike
+  doesn't stop at "does a frozen binary run" without also answering
+  "does the Tauri shell know if it's alive."
+- **Threat model, scoped to what's actually being built** (item 10) —
+  not an enterprise exercise; three concrete things worth deciding
+  alongside the step 2 spike because they're architecture, not
+  polish: the sidecar binds `127.0.0.1` only (already in §8), any
+  local IPC between Tauri and the sidecar is treated as trusted-local
+  (not exposed), and logs never include API keys or full profile/chat
+  content — a redaction rule applied at the logging layer, not
+  reviewed case-by-case later.
+- **Telemetry policy** (item 18) — trivial to state now and worth
+  stating before any code exists to leak from: **no telemetry, no
+  analytics, by default, matching the current codebase exactly** —
+  nothing in this project sends usage data anywhere today. Free to
+  decide now, a real privacy-model rewrite if telemetry is added
+  later without having decided this first.
+- **Offline behavior, as a stated principle** (item 1) — Fully Local
+  mode already implies zero network dependency for core features; the
+  one rule worth writing down now is that any online-only feature
+  (Semi-Local chat, Cloud sync) fails with a specific, honest reason
+  shown to the user, never a silent hang or a generic error — this
+  shapes the error-handling pattern from the start rather than
+  retrofitting good messages later.
+- **Code signing** (item 11) — already in §9; no change, just
+  confirming it's not missing from this pass.
+- **Licensing — a real inconsistency, found while checking this item.**
+  `apps/backend/pyproject.toml` declares `license = { text = "MIT" }`.
+  The repo's actual `LICENSE` file and README are **PolyForm
+  Noncommercial License 1.0.0** — these don't match. Worth fixing the
+  stale `pyproject.toml` field regardless of the desktop work. More
+  importantly for this plan specifically: PolyForm Noncommercial
+  restricts *commercial* use of the software itself — worth deciding
+  now, before any packaging work, whether the desktop distribution
+  (and any future paid tier) is intended to stay noncommercial or
+  needs a different license, since that's a much harder thing to
+  change after people have already installed copies under one license
+  than to decide up front. This plan takes no position on which —
+  it's a business decision, not a technical one — but it needs an
+  actual answer before a public download link goes out.
+
+### Explicitly parked — real, but premature before v1 exists
+
+Stated with a reason each, not dropped silently:
+
+- **Crash recovery / safe mode** (item 3) — needs a runtime that can
+  actually crash first; premature before §11 step 2 even proves the
+  sidecar runs at all.
+- **Diagnostics UI** (item 4) — the redaction *rule* is folded in
+  above; the actual Diagnostics screen is v2 UX polish, already
+  sequenced after the architecture in §11 step 8.
+- **Resource limit enforcement** (item 6) — §7 already covers
+  *detection*-driven model selection for v1; hard-enforced caps (max
+  RAM/CPU/concurrent tasks) are real but not needed until there's more
+  than one local model competing for resources.
+- **Full model lifecycle** (item 7) — v1 has exactly one downloadable
+  model (MiniLM) with a binary install/fallback choice. A full
+  discover/verify/register/unload/rollback lifecycle is speculative
+  infrastructure until there's a second model to manage.
+- **Release channels** (stable/beta/dev, item 12) — nothing to branch
+  from until there's a released v1.
+- **Feature flags** (item 13) — genuine premature infrastructure for a
+  pre-v1, single-developer project.
+- **Accessibility polish** (item 14) — real and worth doing well, but
+  it's UX polish, already correctly last in §11's sequence (step 8),
+  not an architectural decision that gets more expensive if deferred.
+- **Internationalization** (item 15) — the source document's own text
+  already agrees this isn't urgent; the only cheap thing worth doing
+  now is not hard-coding user-facing strings carelessly, which is a
+  coding-time habit, not a design decision to make in this plan.
+- **Supply-chain SBOM / reproducible builds** (item 17) — genuine
+  mature-product tooling; the one piece already true today is that
+  `pyproject.toml` and `package.json` both pin dependencies with
+  version constraints. A full SBOM/signed-release pipeline is real
+  work worth doing once there's a real release to protect, not before
+  one exists.
+
+---
+
+
 
 No code changes accompany this document. Per the working rule this
 task started under, implementation begins only after this plan is
