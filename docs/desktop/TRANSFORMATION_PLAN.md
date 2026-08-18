@@ -161,7 +161,7 @@ rather than a port of the desktop runtime.
 | `src/db/models/user.py`, `profile.py` (Postgres `UUID`/`JSON` types) | **Keep, unused locally** | Cloud only | Local mode doesn't touch these tables at all — see §6 |
 | `src/services/auth/*`, JWT | **Keep, unused locally** | Cloud only | No accounts in Fully Local mode |
 | `src/services/chat/chat_service.py` | **Refactor** | New `LLMProvider` interface: `PlatformAnthropicProvider` (current behavior) + `UserSuppliedKeyProvider` (BYO key, request-scoped, never persisted) | System-prompt-building logic stays server-side either way — it needs the profile/score context regardless of which key sends the request |
-| `apps/frontend/src/middleware.ts` | **Replace** | Client-side auth guard reading existing `localStorage`/Zustand state | Confirmed non-functional today (dead cookie check) *and* incompatible with a static Tauri export — one fix addresses both |
+| `apps/frontend/src/middleware.ts` | **Replace** | Client-side auth guard reading existing `localStorage`/Zustand state | Confirmed non-functional today (dead cookie check) *and* incompatible with a static Tauri export *and*, discovered during a later verification pass, Next.js 16 itself now warns the `middleware` file convention is deprecated in favor of `proxy` — three independent reasons converging on one fix |
 | `apps/frontend/next.config.ts` (`output: "standalone"`) | **Refactor** | Build-mode-aware config: `standalone` for Cloud/Vercel, `export` for desktop | The two output modes are mutually exclusive; can't ship one config for both |
 | `apps/frontend/src/features/storage/*` (`StorageAdapter`) | **Keep** | Directly reusable | The local Python sidecar becomes, conceptually, a 6th target behind the same interface already proven by `LocalDeviceAdapter` |
 | `src/scripts/load_onet.py` | **Refactor** | Split: keep the career definitions + `embed_text` calls; add a release-time build step that writes a portable bundle (flat file + optional index) instead of writing to live Postgres | Local mode needs this data pre-built once by the maintainer, not computed per install |
@@ -194,7 +194,10 @@ Stated plainly, in the order they'd actually bite:
    persist (§6 has the full reasoning).
 3. **`middleware.ts` is confirmed dead code as route protection today**
    (§1) and separately incompatible with a static Tauri export either
-   way. One fix, two reasons to make it.
+   way. A real `next build` run during the LLMProvider phase (§11 step
+   1) surfaced a third, independent reason: Next.js 16.2.6 itself now
+   warns that the `middleware` file convention is deprecated in favor
+   of `proxy`. One fix, three converging reasons to make it.
 4. **`next.config.ts`'s `output: "standalone"` and the `export` mode a
    static Tauri build needs are mutually exclusive settings** — this
    needs a build-mode branch, not a shared config file.
@@ -485,20 +488,52 @@ These attach to steps already in §11's sequence, not new steps.
   retrofitting good messages later.
 - **Code signing** (item 11) — already in §9; no change, just
   confirming it's not missing from this pass.
-- **Licensing — a real inconsistency, found while checking this item.**
-  `apps/backend/pyproject.toml` declares `license = { text = "MIT" }`.
-  The repo's actual `LICENSE` file and README are **PolyForm
-  Noncommercial License 1.0.0** — these don't match. Worth fixing the
-  stale `pyproject.toml` field regardless of the desktop work. More
-  importantly for this plan specifically: PolyForm Noncommercial
-  restricts *commercial* use of the software itself — worth deciding
-  now, before any packaging work, whether the desktop distribution
-  (and any future paid tier) is intended to stay noncommercial or
-  needs a different license, since that's a much harder thing to
-  change after people have already installed copies under one license
-  than to decide up front. This plan takes no position on which —
-  it's a business decision, not a technical one — but it needs an
-  actual answer before a public download link goes out.
+- **Licensing — a real inconsistency, found while checking this item,
+  now fixed.** `apps/backend/pyproject.toml` declared
+  `license = { text = "MIT" }`. The repo's actual `LICENSE` file and
+  README are **PolyForm Noncommercial License 1.0.0** — these didn't
+  match. Fixed to `PolyForm-Noncommercial-1.0.0` in
+  `apps/backend/pyproject.toml`. **This was a metadata correction, not
+  a license change** — the project's intended license stays PolyForm
+  Noncommercial; nothing here should be read as authorization to ever
+  switch it to MIT, Apache-2.0, or anything more permissive without
+  the project owner explicitly saying so.
+
+  A targeted (not exhaustive) third-party audit of the two novel,
+  load-bearing pieces this plan actually introduces:
+  - **Tauri**: dual MIT/Apache-2.0, explicitly designed to support
+    proprietary/commercial repackaging (confirmed against Tauri's own
+    docs and GitHub repo) — no conflict with keeping the app itself
+    noncommercial.
+  - **PyInstaller** (the likely tool for §4/§11 step 2's sidecar
+    freeze): its own license explicitly permits shipping the frozen
+    executable under any license the developer chooses — it just
+    passes the question through to whatever's bundled inside.
+  - **The MiniLM embedding model itself** — the one AI model actually
+    redistributed inside the installer, not just called over an API —
+    is labeled `apache-2.0` on its model card. There is a real,
+    unresolved concern raised by other developers in the model's own
+    HuggingFace discussion thread: some of its training data (MS
+    MARCO, GooAQ) reportedly carries separate non-commercial
+    restrictions, creating genuine ambiguity about downstream
+    commercial use that the `apache-2.0` label alone doesn't resolve.
+    Not legal advice, and not resolved here — but worth knowing now,
+    specifically because this is the one bundled component that would
+    actually matter if the noncommercial-vs-paid-tier question is ever
+    revisited.
+  - Minor, non-blocking aside found in the same pass: Windows Tauri
+    builds depend on the Microsoft Visual C++ Build Tools, whose own
+    licensing terms other developers have described as confusing even
+    for proprietary/commercial use — a build-*toolchain* question, not
+    a redistributed-artifact one, so lower stakes than the model
+    question above, but worth being aware of before the Windows
+    packaging step.
+  - **Not done, and deliberately not attempted here**: a full audit of
+    every pinned dependency in `pyproject.toml`/`package.json` (torch,
+    transformers, scikit-learn, FastAPI, SQLAlchemy, etc.). That's the
+    SBOM-style work already parked below as premature before a real
+    release exists — this was a spot-check of the two new, unusual
+    pieces this plan introduces, not a substitute for that later pass.
 
 ### Explicitly parked — real, but premature before v1 exists
 
