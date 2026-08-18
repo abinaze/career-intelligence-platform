@@ -1,4 +1,4 @@
-"""Request and response schemas for the career chat endpoint."""
+"""Request schemas for the career chat endpoints."""
 
 from __future__ import annotations
 
@@ -28,9 +28,15 @@ class ChatRequest(BaseModel):
     )
 
 
-class ChatResponse(BaseModel):
-    """Response from POST /chat/message."""
+class TestConnectionRequest(BaseModel):
+    """Request body for POST /chat/test-connection."""
 
-    reply: str
-    model: str
-    tokens_used: int | None = None
+    api_key: str = Field(
+        ...,
+        min_length=1,
+        max_length=500,
+        description=(
+            "The Anthropic API key to validate. Used for exactly one "
+            "minimal test call and never persisted on the backend."
+        ),
+    )

@@ -8,11 +8,13 @@ import { AccountForm } from "./AccountForm";
 import { ChangePasswordForm } from "./ChangePasswordForm";
 import { DangerZone } from "./DangerZone";
 import { StorageSettings } from "./StorageSettings";
+import { AnthropicKeyConnect } from "@/features/aiProviders/components/AnthropicKeyConnect";
 
 const TABS = [
   { id: "profile", label: "Profile" },
   { id: "account", label: "Account" },
   { id: "storage", label: "Storage" },
+  { id: "ai", label: "AI Providers" },
   { id: "password", label: "Password" },
   { id: "danger", label: "Danger zone" },
 ] as const;
@@ -39,6 +41,11 @@ const SECTION_META: Record<TabId, { title: string; description: string }> = {
     title: "Data storage",
     description:
       "Choose where your career profile, assessment results, and recommendations are stored.",
+  },
+  ai: {
+    title: "AI providers",
+    description:
+      "Chat uses our platform's key by default. Connect your own Anthropic key to use your account instead — it stays in this browser and is never saved on our servers.",
   },
   password: {
     title: "Change password",
@@ -90,6 +97,7 @@ export function SettingsShell() {
         {activeTab === "profile" && <ProfileForm />}
         {activeTab === "account" && <AccountForm />}
         {activeTab === "storage" && <StorageSettings />}
+        {activeTab === "ai" && <AnthropicKeyConnect />}
         {activeTab === "password" && <ChangePasswordForm />}
         {activeTab === "danger" && <DangerZone />}
       </div>

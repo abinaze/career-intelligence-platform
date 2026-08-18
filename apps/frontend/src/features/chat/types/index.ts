@@ -20,6 +20,7 @@ export interface ChatResponse {
   reply: string;
   model: string;
   tokens_used: number | null;
+  provider_used: "platform" | "user_key";
 }
 
 export type ChatStatus = "idle" | "loading" | "error";

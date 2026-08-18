@@ -7,14 +7,18 @@ scores and profile so every answer is personalised.
 
 The service is stateless — conversation history is passed in by
 the client and stored in frontend Zustand state only.
+
+As of the LLM provider abstraction, a request can optionally supply
+its own Anthropic API key (see llm_provider.py) instead of using the
+platform's. The system-prompt-building logic below stays here either
+way — it needs the user's DB-stored profile/score context regardless
+of which key ends up sending the request.
 """
 
 from __future__ import annotations
 
 import uuid
 
-from fastapi import HTTPException, status
-import httpx
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -24,13 +28,10 @@ from src.db.models.profile import UserProfile
 from src.db.repositories.psychometric import PsychometricScoreRepository
 from src.schemas.requests.chat import ChatRequest
 from src.schemas.responses.chat import ChatResponse
+from src.services.chat.llm_provider import resolve_llm_provider, verify_anthropic_key
 
 logger = get_logger(__name__)
 _settings = get_settings()
-
-_ANTHROPIC_API_URL = "https://api.anthropic.com/v1/messages"
-_MODEL = "claude-sonnet-4-6"
-_MAX_TOKENS = 1024
 
 
 def _build_system_prompt(
@@ -90,12 +91,17 @@ class ChatService:
         self,
         user_id: uuid.UUID,
         payload: ChatRequest,
+        user_api_key: str | None = None,
     ) -> ChatResponse:
         """
         Send a chat message and return an AI reply.
 
         Loads the user's profile and psychometric scores to build a
-        personalised system prompt, then calls the Anthropic API.
+        personalised system prompt, then calls whichever LLM provider
+        `resolve_llm_provider` picks. If `user_api_key` is supplied, it
+        takes priority over the platform's own key — see
+        llm_provider.py's module docstring for why it's never persisted
+        here.
         """
         # Load profile
         profile_result = await self.db.execute(
@@ -118,66 +124,37 @@ class ChatService:
 
         system_prompt = _build_system_prompt(score_map, profile_meta)
 
-        # Build message list for Anthropic API
+        # Build message list for the LLM API
         messages: list[dict[str, str]] = [
             {"role": m.role, "content": m.content}
             for m in payload.history[-18:]  # keep last 18 turns + new message
         ]
         messages.append({"role": "user", "content": payload.message})
 
-        api_key = getattr(_settings, "ANTHROPIC_API_KEY", None)
-        if not api_key:
-            raise HTTPException(
-                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail="Chat service is not configured. Set ANTHROPIC_API_KEY.",
-            )
-
-        try:
-            async with httpx.AsyncClient(timeout=30.0) as client:
-                response = await client.post(
-                    _ANTHROPIC_API_URL,
-                    headers={
-                        "x-api-key": api_key,
-                        "anthropic-version": "2023-06-01",
-                        "content-type": "application/json",
-                    },
-                    json={
-                        "model": _MODEL,
-                        "max_tokens": _MAX_TOKENS,
-                        "system": system_prompt,
-                        "messages": messages,
-                    },
-                )
-                response.raise_for_status()
-
-        except httpx.HTTPStatusError as exc:
-            logger.error(
-                "Anthropic API error",
-                status=exc.response.status_code,
-                body=exc.response.text[:500],
-            )
-            raise HTTPException(
-                status_code=status.HTTP_502_BAD_GATEWAY,
-                detail="Chat service temporarily unavailable. Please try again.",
-            ) from exc
-        except httpx.TimeoutException as exc:
-            raise HTTPException(
-                status_code=status.HTTP_504_GATEWAY_TIMEOUT,
-                detail="Chat service timed out. Please try again.",
-            ) from exc
-
-        data = response.json()
-        reply_text: str = data["content"][0]["text"]
-        tokens_used: int | None = data.get("usage", {}).get("output_tokens")
+        provider = resolve_llm_provider(
+            platform_api_key=getattr(_settings, "ANTHROPIC_API_KEY", None),
+            user_api_key=user_api_key,
+        )
+        completion = await provider.complete(system_prompt, messages)
 
         logger.info(
             "Chat message processed",
             user_id=str(user_id),
-            tokens=tokens_used,
+            tokens=completion.tokens_used,
+            provider=completion.provider_used,
         )
 
         return ChatResponse(
-            reply=reply_text,
-            model=_MODEL,
-            tokens_used=tokens_used,
+            reply=completion.reply,
+            model=completion.model,
+            tokens_used=completion.tokens_used,
+            provider_used=completion.provider_used,
         )
+
+    async def test_connection(self, api_key: str) -> tuple[bool, str]:
+        """
+        Validates a user-supplied API key with one minimal Anthropic
+        call, without persisting it anywhere. See llm_provider.py's
+        verify_anthropic_key for the actual call and its error mapping.
+        """
+        return await verify_anthropic_key(api_key)
