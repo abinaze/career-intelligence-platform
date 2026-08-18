@@ -127,6 +127,10 @@ def create_application() -> FastAPI:
             "redis": redis_status,
             "faiss_index": "ready" if ci.is_ready else "not_built",
             "faiss_careers": str(ci.size),
+            # Reports whether the *platform's own* key is configured —
+            # chat still works per-request for anyone supplying their
+            # own key via X-User-Anthropic-Key (see
+            # services/chat/llm_provider.py), independent of this flag.
             "chat": "enabled" if _settings.ANTHROPIC_API_KEY else "disabled",
             "google_drive_storage": (
                 "enabled"
