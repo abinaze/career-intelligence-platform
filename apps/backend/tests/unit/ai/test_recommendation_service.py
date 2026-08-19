@@ -75,7 +75,7 @@ class TestRanker:
         similarity: float = 0.8,
         salary: float | None = 100_000.0,
         outlook: float | None = 80.0,
-        interests: dict | None | str = "default",
+        interests: dict | str | None = "default",
     ) -> RankInput:
         resolved = _RANKER_DEFAULT_INTERESTS if interests == "default" else interests
         return RankInput(
