@@ -6,6 +6,17 @@ on:
   pull_request:
     branches: [main, develop]
 
+# Least-privilege default for every job below: none of the three jobs
+# push commits, open PRs, or otherwise write to the repo — they check
+# out code, lint/type-check/test it, and upload coverage to Codecov
+# (an external service, not a repo write). Explicit `contents: read`
+# closes CodeQL alerts #4/#5/#6 ("Workflow does not contain
+# permissions"), which otherwise leaves this workflow running with
+# whatever the repo's default GITHUB_TOKEN permissions happen to be —
+# broader than any job here actually needs.
+permissions:
+  contents: read
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true

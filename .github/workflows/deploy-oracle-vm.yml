@@ -33,6 +33,15 @@ on:
       - "infrastructure/docker/docker-compose.oracle-vm.yml"
   workflow_dispatch: {} # manual re-deploy without a code change
 
+# This job never uses actions/checkout — it SSHes into the VM and runs
+# `git pull` *there*, against the VM's own credentials, not this
+# workflow's GITHUB_TOKEN. It doesn't need repo write access, or
+# really any GITHUB_TOKEN permission at all — contents: read is the
+# safe floor rather than leaving this undeclared, which is what CodeQL
+# alert #8 ("Workflow does not contain permissions") flags.
+permissions:
+  contents: read
+
 jobs:
   deploy:
     name: SSH deploy to Oracle VM
