@@ -51,9 +51,14 @@ deleting real, working code, depends entirely on this answer. Get it
 recorded here before Phase 1 finishes:
 
 ```
-DECISION: [ pending — fill in: "keep both" | "archive cloud" | other ]
-DECIDED ON: [ date ]
-REASONING: [ one paragraph ]
+DECISION: Archive cloud — Desktop is the product now. Cloud-only code
+  (Render backend, Postgres, accounts/JWT, the BYOS cloud-storage OAuth
+  brokers) moves to archive/cloud/, not deleted, kept for reference
+  until Desktop is confirmed stable.
+DECIDED ON: 2026-08-19
+REASONING: Carrying two full product architectures forward in parallel
+  is real, ongoing maintenance cost for a single-developer project.
+  Desktop is the actual product going forward.
 ```
 
 ## 3. What both directions already agree on
@@ -252,7 +257,7 @@ lands there.
 Each phase gets its own Issue, its own PR, and updates this file if it
 changes an assumption in §2 or §3.
 
-- **Phase 0 — Repo hygiene** (safe regardless of §2): CodeQL
+- **Phase 0 — Repo hygiene.** ✅ Done (CodeQL
   `permissions:` findings on `ci.yml`/`deploy-oracle-vm.yml`, empty
   placeholder file removal, redundant `.gitkeep` cleanup, a real look
   at the open Dependabot alerts (transitive npm deps via
@@ -262,30 +267,74 @@ changes an assumption in §2 or §3.
   older vulnerable resolutions coexisting for several of these,
   meaning the overrides aren't fully closing the gap — needs its own
   careful pass, not a guess).
-- **Phase 1 — §2 decision recorded.** Nothing past this point proceeds
-  until the box in §2 is filled in.
-- **Phase 2 — depends on §2's answer**: either (a) archive the
-  Cloud-only file list above into `archive/cloud/` with a clear README
-  explaining what it is and why it's there, or (b) confirmed no-op,
-  Desktop work proceeds additively.
-- **Phase 3 — Database-free core.** Remove `stateless_service.py`'s
-  remaining indirect DB dependency for career data; refactor
-  `load_onet.py` into its release-time-bundle form; drop `faiss-cpu`
-  from the desktop dependency set in favor of NumPy.
-- **Phase 4 — Local data persistence.** The local
+- **Phase 1 — §2 decision recorded: archive cloud.** ✅ Done.
+- **Phase 2a — Database-free core.** ✅ Done. This turned out to be a
+  *prerequisite* for archiving, not a separate later phase as
+  originally sequenced below — discovered by actually tracing the
+  dependency graph before moving any files, not assumed. Real
+  findings from that trace:
+  - `stateless_service.py`, despite being the documented "DB-free
+    centerpiece," directly constructed a DB-backed `RecommendationService`
+    and delegated to it — its *only* real DB touch was one query
+    fetching `Career` rows by O\*NET code. Replaced with a new
+    `career_catalog.py` (a static, importable career list — the
+    curated O\*NET data, extracted verbatim from `load_onet.py`; see
+    below for the corrected count) and a new `local_recommender.py`
+    that reimplements `recommend_from_data` against that catalog with
+    plain NumPy cosine similarity instead of FAISS, in-memory instead
+    of a DB round-trip.
+  - `chat_service.py` — shipped in the previous phase, already living
+    in this file's "Keep as-is" list — turned out to load the user's
+    profile and psychometric scores from Postgres by `user_id`. Since
+    there's no account system anymore, that lookup has nothing to key
+    off. Refactored so `ChatRequest` carries `score_map`/`profile_meta`
+    directly from the client (the frontend already has this data
+    locally from the stateless assessment flow), matching the same
+    pattern `stateless_service.py` already used.
+  - Both the `/stateless` and `/chat` endpoints dropped their
+    `get_current_user`/`get_db` FastAPI dependencies entirely.
+  - **The O\*NET career catalog has 10 entries, not 14.** An earlier
+    pass of `docs/desktop/TRANSFORMATION_PLAN.md` stated 14; precisely
+    recounted while extracting the data into `career_catalog.py` and
+    corrected in both documents. Doesn't change any conclusion (10 is
+    still tiny, NumPy is still the right call) but a wrong number
+    shouldn't sit in committed documentation once found.
+  - Verified: whole-project `ruff check`/`format` clean, zero *new*
+    mypy errors (a handful of pre-existing ones remain in files this
+    phase didn't touch, and one in a file it did touch but confirmed
+    via direct comparison against the untouched original to predate
+    this phase), 139 tests passing (121 baseline + 18 new, covering
+    the catalog and the local recommender — including a sanity check
+    that a career's own embedding used as the query ranks that exact
+    career first, confirming the FAISS→NumPy replacement is
+    mathematically equivalent, not just code that runs), zero
+    regressions.
+- **Phase 2b — the actual archive move.** Now genuinely low-risk and
+  mechanical, since nothing in the active Desktop path depends on the
+  Cloud-only files anymore (confirmed by the trace above, not
+  assumed). Move the Cloud-only file list into `archive/cloud/` with a
+  README, remove the corresponding router registrations from
+  `main.py`, update `load_onet.py`'s role (it now seeds Postgres for
+  the archived Cloud product specifically, importing `CAREERS` from
+  `career_catalog.py` as its single source of truth rather than
+  duplicating the data — or it moves to the archive too, since seeding
+  Postgres is now purely a Cloud concern; decide at execution time
+  based on whether anything in `archive/cloud/` itself still needs a
+  working loader). This is the next unit of work.
+- **Phase 3 — Local data persistence.** The local
   profile/assessment/recommendation file store, using the BYOS export
   envelope shape.
-- **Phase 5 — Local runtime / FastAPI sidecar.** `127.0.0.1` binding,
+- **Phase 4 — Local runtime / FastAPI sidecar.** `127.0.0.1` binding,
   dependency-set split in `pyproject.toml`, the standalone-executable
   freeze spike (`docs/desktop/TRANSFORMATION_PLAN.md` §4's first
   blocking issue — the least-proven piece of the whole plan).
-- **Phase 6 — Frontend switches to the local runtime.** API client
+- **Phase 5 — Frontend switches to the local runtime.** API client
   redesign (if §2 drops accounts), `middleware.ts` replacement,
   `next.config.ts` build-mode split (`standalone` vs `export`).
-- **Phase 7 — First-run setup, model manager, provider manager UI.**
-- **Phase 8 — Tauri shell, Windows packaging, code signing.**
-- **Phase 9 — GitHub Release + signed auto-updater.**
-- **Phase 10 — Polish**: diagnostics, crash recovery, accessibility —
+- **Phase 6 — First-run setup, model manager, provider manager UI.**
+- **Phase 7 — Tauri shell, Windows packaging, code signing.**
+- **Phase 8 — GitHub Release + signed auto-updater.**
+- **Phase 9 — Polish**: diagnostics, crash recovery, accessibility —
   everything `docs/desktop/TRANSFORMATION_PLAN.md` §12 already
   explicitly deferred past v1.
 
