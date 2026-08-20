@@ -1,21 +1,19 @@
 """
 Stateless (no-persistence) API endpoints.
 
-Backs local-device and bring-your-own-storage frontend flows. All
-endpoints require authentication (a valid account is still needed), but
-none of them read or write personal profile or assessment data to the
-database — only the shared career catalog is read. See
-docs/architecture/byos.md for the full design rationale.
+Backs local-device and bring-your-own-storage frontend flows, and —
+since the Cloud archive (see docs/NORTH_STAR.md) — the only assessment/
+recommendation path this application has. No authentication: there is
+no account system in the desktop-first product. Nothing here reads or
+writes personal profile or assessment data to any database; only the
+static, shared career catalog (career_catalog.py) is read, in memory.
+See docs/architecture/byos.md for the original design rationale.
 """
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, Query, status
-from sqlalchemy.ext.asyncio import AsyncSession
+from fastapi import APIRouter, Query, status
 
-from src.api.v1.dependencies.auth import get_current_user
-from src.db.engine import get_db
-from src.db.models.user import User
 from src.schemas.requests.stateless import StatelessRecommendationRequest, StatelessScoreRequest
 from src.schemas.responses.recommendation import RecommendationResultSchema
 from src.schemas.responses.stateless import StatelessQuestionsResponse, StatelessScoreResponse
@@ -24,29 +22,21 @@ from src.services.stateless.stateless_service import StatelessService
 router = APIRouter(prefix="/stateless", tags=["Stateless (BYOS)"])
 
 
-async def get_stateless_service(
-    db: AsyncSession = Depends(get_db),
-) -> StatelessService:
-    return StatelessService(db)
+def get_stateless_service() -> StatelessService:
+    return StatelessService()
 
 
 @router.get(
     "/questions",
     response_model=StatelessQuestionsResponse,
     status_code=status.HTTP_200_OK,
-    summary="Get the static assessment question bank (no session created)",
-    description=(
-        "Returns the question set for local-device or bring-your-own-storage "
-        "assessment flows. Unlike POST /assessment/start, this does not "
-        "create a database-tracked session."
-    ),
+    summary="Get the static assessment question bank",
+    description="Returns the question set for the assessment flow. Creates no session.",
 )
-async def get_questions(
+def get_questions(
     assessment_type: str = Query(default="full"),
-    current_user: User = Depends(get_current_user),
-    service: StatelessService = Depends(get_stateless_service),
 ) -> StatelessQuestionsResponse:
-    return service.get_questions(assessment_type)
+    return get_stateless_service().get_questions(assessment_type)
 
 
 @router.post(
@@ -55,12 +45,10 @@ async def get_questions(
     status_code=status.HTTP_200_OK,
     summary="Score assessment responses without persisting them",
 )
-async def score_assessment(
+def score_assessment(
     payload: StatelessScoreRequest,
-    current_user: User = Depends(get_current_user),
-    service: StatelessService = Depends(get_stateless_service),
 ) -> StatelessScoreResponse:
-    return service.score_assessment(payload)
+    return get_stateless_service().score_assessment(payload)
 
 
 @router.post(
@@ -69,12 +57,13 @@ async def score_assessment(
     status_code=status.HTTP_200_OK,
     summary="Generate recommendations from client-supplied profile and scores",
 )
-async def get_stateless_recommendations(
+def get_stateless_recommendations(
     payload: StatelessRecommendationRequest,
-    current_user: User = Depends(get_current_user),
-    service: StatelessService = Depends(get_stateless_service),
 ) -> RecommendationResultSchema:
-    result = await service.get_recommendations(str(current_user.id), payload)
+    # "local" rather than a real user id — there is no account system
+    # in this path (see docs/NORTH_STAR.md); this label exists only for
+    # the log line inside get_recommendations.
+    result = get_stateless_service().get_recommendations("local", payload)
 
     return RecommendationResultSchema(
         user_id=result.user_id,

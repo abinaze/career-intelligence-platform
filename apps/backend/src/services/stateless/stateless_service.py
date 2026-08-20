@@ -1,22 +1,28 @@
 """
 Stateless service.
 
-Backs the local-device / bring-your-own-storage frontend flows. Every
-method here computes a result from data supplied directly in the
-request and returns it — nothing about the caller's profile or
-assessment responses is written to the database. Only the shared,
-non-personal career catalog and FAISS index are read.
+Backs the local-device / bring-your-own-storage frontend flows, and —
+since the Cloud archive (see docs/NORTH_STAR.md) — the only
+recommendation/assessment path this application has. Every method here
+computes a result from data supplied directly in the request and
+returns it: no database of any kind, no account lookup. Only the
+shared, non-personal static career catalog (career_catalog.py) is
+read.
 
-See docs/architecture/byos.md for the full design rationale.
+See docs/architecture/byos.md for the original design rationale (this
+service predates the Cloud archive, when it existed as an opt-in
+DB-free path alongside an account-based one).
 """
 
 from __future__ import annotations
 
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from src.ai.psychometric_engine.dimensions import DIMENSION_METADATA
 from src.ai.psychometric_engine.question_bank import get_questions_for_type
 from src.ai.psychometric_engine.scorer import score_responses
+from src.ai.recommendation_engine.local_recommender import (
+    RecommendationResult,
+    recommend_from_data,
+)
 from src.core.logging.setup import get_logger
 from src.schemas.requests.stateless import (
     StatelessProfileMeta,
@@ -25,10 +31,6 @@ from src.schemas.requests.stateless import (
 )
 from src.schemas.responses.assessment import DimensionScoreSchema, QuestionSchema
 from src.schemas.responses.stateless import StatelessQuestionsResponse, StatelessScoreResponse
-from src.services.recommendation.recommendation_service import (
-    RecommendationResult,
-    RecommendationService,
-)
 
 logger = get_logger(__name__)
 
@@ -69,11 +71,12 @@ def _compute_stateless_completeness(
 
 
 class StatelessService:
-    def __init__(self, db: AsyncSession) -> None:
-        self.db = db
-        # RecommendationService still needs a DB session — solely to read
-        # the shared career catalog and FAISS index, never per-user data.
-        self.recommendation_service = RecommendationService(db)
+    def __init__(self) -> None:
+        pass  # no state, no DB, no account — kept as a class rather than
+        # module-level functions since get_recommendations/score_assessment/
+        # get_questions are already called that way from the endpoint and
+        # from chat_service.py-adjacent code; a class keeps that call shape
+        # stable rather than forcing a wider signature change right now.
 
     def get_questions(self, assessment_type: str) -> StatelessQuestionsResponse:
         """Return the static question bank for the given assessment type."""
@@ -112,14 +115,14 @@ class StatelessService:
             ],
         )
 
-    async def get_recommendations(
+    def get_recommendations(
         self,
         user_id: str,
         payload: StatelessRecommendationRequest,
     ) -> RecommendationResult:
         """
         Generate recommendations from client-supplied scores and profile
-        data. Raises HTTP 400 (via RecommendationService) if
+        data. Raises HTTP 400 (via recommend_from_data) if
         dimension_scores is empty.
         """
         profile_meta: dict[str, str | None] = {
@@ -132,7 +135,7 @@ class StatelessService:
 
         logger.info("Stateless recommendation request", user_id=user_id)
 
-        return await self.recommendation_service.recommend_from_data(
+        return recommend_from_data(
             user_id=user_id,
             score_map=payload.dimension_scores,
             profile_meta=profile_meta,
