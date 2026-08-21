@@ -264,8 +264,7 @@ def _embeddings() -> np.ndarray:
         if _embedding_matrix is not None:
             return _embedding_matrix
         vectors = [
-            embed_text(f"{c.title}. {c.description} Category: {c.broad_category}.")
-            for c in CAREERS
+            embed_text(f"{c.title}. {c.description} Category: {c.broad_category}.") for c in CAREERS
         ]
         _embedding_matrix = np.array(vectors, dtype=np.float32)
     return _embedding_matrix
