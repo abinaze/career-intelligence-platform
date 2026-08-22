@@ -54,9 +54,11 @@ work in this project.
   `ImportError`, logs a warning, returns empty results rather than
   crashing).
 - The current curated O\*NET career catalog (`load_onet.py`) has
-  **14 entries.** At that scale FAISS is solving a problem that doesn't
-  exist yet — a plain NumPy cosine-similarity loop is instant. This
-  matters concretely for the desktop dependency list (§5).
+  **10 entries** (precisely recounted during a later phase — an
+  earlier pass in this same document miscounted it as 14). At that
+  scale FAISS is solving a problem that doesn't exist yet — a plain
+  NumPy cosine-similarity loop is instant. This matters concretely for
+  the desktop dependency list (§5).
 - Chat: a raw `httpx` POST to `https://api.anthropic.com/v1/messages`
   — no Anthropic SDK dependency. `ChatService` builds a personalised
   system prompt server-side from the user's DB-stored profile and
@@ -156,7 +158,7 @@ rather than a port of the desktop runtime.
 |---|---|---|---|
 | `src/services/stateless/*`, `/api/v1/stateless/*` | **Keep** | Core of the local compute path | Already zero-persistence; this is the desktop runtime's backbone, not new code |
 | `src/ai/embeddings/embedder.py` | **Keep** | Same | Already degrades gracefully without `torch` |
-| `src/ai/recommendation_engine/faiss_index.py` | **Keep, likely bypassed** | Same file kept for Cloud; local build probably skips FAISS entirely | 14-entry catalog doesn't need it; see §5 |
+| `src/ai/recommendation_engine/faiss_index.py` | **Keep, likely bypassed** | Same file kept for Cloud; local build probably skips FAISS entirely | 10-entry catalog doesn't need it; see §5 |
 | `src/ai/psychometric_engine/*` | **Keep** | Same | Pure Python/NumPy, no DB or network dependency at all |
 | `src/db/models/user.py`, `profile.py` (Postgres `UUID`/`JSON` types) | **Keep, unused locally** | Cloud only | Local mode doesn't touch these tables at all — see §6 |
 | `src/services/auth/*`, JWT | **Keep, unused locally** | Cloud only | No accounts in Fully Local mode |
@@ -229,7 +231,7 @@ model; this already works, it just isn't currently exposed as a
 deliberate user-facing choice.
 
 **Recommend dropping `faiss-cpu` from the local build path
-entirely**, not just making it optional. At 14 catalog entries — and
+entirely**, not just making it optional. At 10 catalog entries — and
 realistically still true even at a few hundred to ~1,000 if the full
 O\*NET taxonomy gets loaded eventually — a brute-force NumPy cosine
 loop over 384-d vectors is sub-millisecond. `faiss-cpu` is a real

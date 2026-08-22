@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from unittest.mock import MagicMock
 
 import pytest
 
@@ -65,20 +64,20 @@ class TestStatelessCompleteness:
 
 class TestStatelessServiceGetQuestions:
     def test_get_questions_returns_correct_count(self) -> None:
-        service = StatelessService(MagicMock())
+        service = StatelessService()
         response = service.get_questions("full")
         assert response.total_questions == len(QUESTION_BANK)
         assert len(response.questions) == response.total_questions
 
     def test_get_questions_quick_type(self) -> None:
-        service = StatelessService(MagicMock())
+        service = StatelessService()
         response = service.get_questions("quick")
         assert response.total_questions < len(QUESTION_BANK)
 
 
 class TestStatelessServiceScoreAssessment:
     def test_score_assessment_returns_all_dimensions(self) -> None:
-        service = StatelessService(MagicMock())
+        service = StatelessService()
         responses = {q.id: 4 for q in QUESTION_BANK}
         result = service.score_assessment(StatelessScoreRequest(responses=responses))
         assert len(result.dimension_scores) == 11
@@ -87,7 +86,7 @@ class TestStatelessServiceScoreAssessment:
             assert 0.0 <= ds.confidence <= 1.0
 
     def test_score_assessment_partial_responses(self) -> None:
-        service = StatelessService(MagicMock())
+        service = StatelessService()
         # Only answer the first 5 questions
         responses = {q.id: 3 for q in QUESTION_BANK[:5]}
         result = service.score_assessment(StatelessScoreRequest(responses=responses))

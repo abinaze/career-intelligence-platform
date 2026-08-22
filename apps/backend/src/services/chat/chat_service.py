@@ -2,30 +2,23 @@
 Career guidance chat service.
 
 Uses the Anthropic Claude API to provide contextual career advice.
-The system prompt is dynamically built from the user's psychometric
-scores and profile so every answer is personalised.
+The system prompt is personalised from psychometric scores and profile
+data the client supplies directly in the request — since the Cloud
+archive (see docs/NORTH_STAR.md) there is no account system and no
+per-user database row to load this from server-side, so it travels
+with the request the same way conversation history already did.
 
-The service is stateless — conversation history is passed in by
-the client and stored in frontend Zustand state only.
+The service is otherwise unchanged: stateless — conversation history
+is passed in by the client and stored in frontend Zustand state only.
 
-As of the LLM provider abstraction, a request can optionally supply
-its own Anthropic API key (see llm_provider.py) instead of using the
-platform's. The system-prompt-building logic below stays here either
-way — it needs the user's DB-stored profile/score context regardless
-of which key ends up sending the request.
+A request can optionally supply its own Anthropic API key (see
+llm_provider.py) instead of using the platform's.
 """
 
 from __future__ import annotations
 
-import uuid
-
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from src.core.config.settings import get_settings
 from src.core.logging.setup import get_logger
-from src.db.models.profile import UserProfile
-from src.db.repositories.psychometric import PsychometricScoreRepository
 from src.schemas.requests.chat import ChatRequest
 from src.schemas.responses.chat import ChatResponse
 from src.services.chat.llm_provider import resolve_llm_provider, verify_anthropic_key
@@ -83,46 +76,29 @@ def _build_system_prompt(
 
 
 class ChatService:
-    def __init__(self, db: AsyncSession) -> None:
-        self.db = db
-        self.score_repo = PsychometricScoreRepository(db)
+    def __init__(self) -> None:
+        pass  # no state, no DB — kept as a class to match the shape of
+        # the other services in this codebase and leave room for future
+        # per-instance state (e.g. a local LLM handle) without another
+        # signature change.
 
     async def send_message(
         self,
-        user_id: uuid.UUID,
         payload: ChatRequest,
         user_api_key: str | None = None,
     ) -> ChatResponse:
         """
         Send a chat message and return an AI reply.
 
-        Loads the user's profile and psychometric scores to build a
-        personalised system prompt, then calls whichever LLM provider
-        `resolve_llm_provider` picks. If `user_api_key` is supplied, it
-        takes priority over the platform's own key — see
+        Builds a personalised system prompt from `payload.score_map`/
+        `payload.profile_meta` (supplied by the client — see
+        ChatRequest's own docstring for why), then calls whichever LLM
+        provider `resolve_llm_provider` picks. If `user_api_key` is
+        supplied, it takes priority over the platform's own key — see
         llm_provider.py's module docstring for why it's never persisted
         here.
         """
-        # Load profile
-        profile_result = await self.db.execute(
-            select(UserProfile).where(UserProfile.user_id == user_id)
-        )
-        profile = profile_result.scalar_one_or_none()
-
-        score_map: dict[str, float] = {}
-        profile_meta: dict[str, str | None] = {}
-
-        if profile:
-            profile_meta = {
-                "education_level": profile.education_level,
-                "current_field": profile.current_field,
-                "primary_goal": profile.primary_goal,
-                "desired_work_environment": profile.desired_work_environment,
-            }
-            scores = await self.score_repo.get_latest_for_profile(profile.id)
-            score_map = {s.dimension: s.score for s in scores}
-
-        system_prompt = _build_system_prompt(score_map, profile_meta)
+        system_prompt = _build_system_prompt(payload.score_map, payload.profile_meta)
 
         # Build message list for the LLM API
         messages: list[dict[str, str]] = [
@@ -139,7 +115,6 @@ class ChatService:
 
         logger.info(
             "Chat message processed",
-            user_id=str(user_id),
             tokens=completion.tokens_used,
             provider=completion.provider_used,
         )

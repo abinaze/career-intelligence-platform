@@ -26,6 +26,25 @@ class ChatRequest(BaseModel):
         max_length=20,
         description="Previous conversation turns (oldest first, max 20).",
     )
+    score_map: dict[str, float] = Field(
+        default_factory=dict,
+        description=(
+            "The user's own psychometric dimension scores (0-100), supplied "
+            "by the client so the system prompt can be personalised. There is "
+            "no account system in this product (see docs/NORTH_STAR.md) — the "
+            "client already holds this data locally from the stateless "
+            "assessment flow and passes it along here rather than the "
+            "backend looking it up by a user id that no longer exists."
+        ),
+    )
+    profile_meta: dict[str, str | None] = Field(
+        default_factory=dict,
+        description=(
+            "Optional biographical fields (education_level, current_field, "
+            "primary_goal, desired_work_environment) for the same reason as "
+            "score_map — supplied by the client, not looked up server-side."
+        ),
+    )
 
 
 class TestConnectionRequest(BaseModel):
